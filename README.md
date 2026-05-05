@@ -16,6 +16,7 @@ Fixed route:
 REST APIs
   -> Airflow ingestion jobs
   -> Data Lake raw layer
+  -> Kafka API polling stream for near-realtime weather events
   -> Spark formatting jobs
   -> Data Lake formatted layer
   -> Spark combination/scoring jobs
@@ -24,13 +25,14 @@ REST APIs
   -> Kibana dashboard
 ```
 
-Optional bonus route:
+Realtime route:
 
 ```text
-Kafka realtime ingestion
-  -> Spark streaming or consumer jobs
-  -> Data Lake / Elasticsearch
-  -> realtime dashboard
+Open-Meteo API polling
+  -> Kafka topic weather.raw.current
+  -> Kafka consumer / Spark streaming job
+  -> raw stream files and/or Elasticsearch
+  -> realtime dashboard option
 ```
 
 ## Project Sources
@@ -50,11 +52,11 @@ This table is the main project tracking source. Every stage update must keep thi
 | 1. Airflow skeleton | Step 2 Data Pipeline | Create one Airflow DAG and clean project structure. | Remove classroom examples; create DAG; create `dags/lib`; create Data Lake folders; add base tests. | `inclusive_mobility_daily_pipeline` loads in Airflow. | `airflow dags list-import-errors`; `airflow dags test`. | Done | `3b23dc4` |
 | 2. Spark/Kafka infrastructure | Spark architecture, Kafka bonus | Prepare Spark route and optional realtime route. | Add Spark master/worker; add Kafka/Zookeeper; add workspace folders; verify services. | Docker stack includes Airflow, Spark, Kafka and Zookeeper. | `docker compose ps`; Spark version; Kafka topic list. | Done | `f47f521` |
 | 3. Raw ingestion | Step 2.1 Ingestion | Fetch N data sources through REST APIs into raw Data Lake files. | Implement AccesLibre fetcher; implement Open-Meteo fetcher; store raw JSON; handle API parameters and pagination. | Raw API files under `datalake/raw/...`. | DAG test; file existence checks; raw JSON preview. | Done | `6a089bb` |
-| 4. Spark formatting | Step 2.2 Formatting | Normalize raw data and write parquet files. | Create Spark jobs; normalize fields; clean dates; select useful columns; write parquet. | Parquet files under `datalake/formatted/...`. | Spark job run; parquet schema checks. | Planned |  |
-| 5. Spark combination and mobility score | Step 2.3 Combination | Join sources and create useful output. | Join accessibility and weather data; compute accessibility score, weather risk score and mobility score; create risk/prioritization outputs. | Usage parquet outputs under `datalake/usage/...`. | Spark job run; sample output checks. | Planned |  |
-| 6. Elasticsearch indexing | Step 2.4 Indexing | Expose final output to a search/dashboard layer. | Add Elasticsearch service; index usage outputs; define index mappings if needed. | Indexed mobility results. | Elasticsearch query returns documents. | Planned |  |
-| 7. Kibana dashboard | Data Viz / Dashboarding | Build dashboard on top of final result. | Add Kibana service; create visualizations for mobility scores, risky areas and improvement priorities. | Kibana dashboard. | Dashboard opens and displays indexed data. | Planned |  |
-| 8. Kafka realtime bonus | Realtime via Kafka bonus | Add optional near-realtime update flow. | Create Kafka topics; create producer/consumer scripts; optionally connect Spark streaming. | Kafka-based refresh path. | Produce and consume sample messages in under 1 minute. | Optional |  |
+| 4. Streaming API ingestion with Kafka | Realtime via Kafka bonus | Poll a frequently refreshed API and push events into Kafka. | Create Kafka topic; implement Open-Meteo current/hourly weather producer; implement consumer that persists raw stream events. | Kafka messages and raw stream JSONL files. | Produce and consume sample messages in under 1 minute. | Planned |  |
+| 5. Spark formatting | Step 2.2 Formatting | Normalize raw data and write parquet files. | Create Spark jobs; normalize fields; clean dates; select useful columns; write parquet. | Parquet files under `datalake/formatted/...`. | Spark job run; parquet schema checks. | Planned |  |
+| 6. Spark combination and mobility score | Step 2.3 Combination | Join sources and create useful output. | Join accessibility and weather data; compute accessibility score, weather risk score and mobility score; create risk/prioritization outputs. | Usage parquet outputs under `datalake/usage/...`. | Spark job run; sample output checks. | Planned |  |
+| 7. Elasticsearch indexing | Step 2.4 Indexing | Expose final output to a search/dashboard layer. | Add Elasticsearch service; index usage outputs; define index mappings if needed. | Indexed mobility results. | Elasticsearch query returns documents. | Planned |  |
+| 8. Kibana dashboard | Data Viz / Dashboarding | Build dashboard on top of final result. | Add Kibana service; create visualizations for mobility scores, risky areas and improvement priorities. | Kibana dashboard. | Dashboard opens and displays indexed data. | Planned |  |
 | 9. Final deliverables | Deliverable section | Prepare final hand-in package. | Write max 10-page PDF; record max 10-minute video; prepare code zip; final README cleanup. | PDF, video and code zip. | Final run from Airflow DAG; deliverable review. | Planned |  |
 
 ## Score Mapping
@@ -62,7 +64,7 @@ This table is the main project tracking source. Every stage update must keep thi
 | Score Area | How This Project Covers It | Status |
 | --- | --- | --- |
 | Ingestion into Data Lake | AccesLibre and Open-Meteo raw JSON files. | Done |
-| Realtime via Kafka | Kafka service is installed; realtime path is optional bonus. | Optional |
+| Realtime via Kafka | Kafka service is installed; Stage 4 will poll Open-Meteo as a near-realtime API source and publish weather events to Kafka. | Planned |
 | Formatting to parquet | Spark formatting jobs will write parquet. | Planned |
 | Field normalization | Spark formatting will clean columns and date/time fields. | Planned |
 | Use Spark | Spark services are installed; formatting and combination will use Spark. | In progress |
@@ -176,7 +178,47 @@ Airflow DAG test: success
 Airflow import errors: none
 ```
 
-### Stage 4: Spark Formatting
+### Stage 4: Streaming API Ingestion with Kafka
+
+Status: planned.
+
+Purpose:
+
+- Cover the realtime/Kafka requirement from the project score grid.
+- Use an API polling pattern to create near-realtime events from a frequently refreshed source.
+- Keep AccesLibre as a batch/reference source and use Open-Meteo current/hourly weather as the streaming-like source.
+
+Tasks:
+
+- Create Kafka topic `weather.raw.current`.
+- Add an Open-Meteo producer under `kafka/producers`.
+- Poll Open-Meteo current or hourly weather data.
+- Publish each API response as a Kafka event.
+- Add a consumer under `kafka/consumers`.
+- Persist consumed events as raw JSONL stream files in the Data Lake.
+- Add a short verification script to produce and consume sample messages in under 1 minute.
+
+Expected outputs:
+
+```text
+datalake/raw/open_meteo/current_weather_stream/YYYYMMDD/events.jsonl
+```
+
+Expected Kafka topic:
+
+```text
+weather.raw.current
+```
+
+Verification target:
+
+```text
+Producer sends Open-Meteo API events to Kafka.
+Consumer receives events and writes raw JSONL.
+End-to-end sample completes in under 1 minute.
+```
+
+### Stage 5: Spark Formatting
 
 Status: planned.
 
@@ -195,7 +237,7 @@ datalake/formatted/acces_libre/establishments/YYYYMMDD/establishments.snappy.par
 datalake/formatted/open_meteo/daily_weather/YYYYMMDD/weather.snappy.parquet
 ```
 
-### Stage 5: Spark Combination and Mobility Score
+### Stage 6: Spark Combination and Mobility Score
 
 Status: planned.
 
@@ -223,7 +265,7 @@ Initial formula:
 mobility_score = accessibility_score * 0.7 + (100 - weather_risk_score) * 0.3
 ```
 
-### Stage 6: Elasticsearch Indexing
+### Stage 7: Elasticsearch Indexing
 
 Status: planned.
 
@@ -242,7 +284,7 @@ inclusive_mobility_risky_areas
 inclusive_mobility_improvement_priorities
 ```
 
-### Stage 7: Kibana Dashboard
+### Stage 8: Kibana Dashboard
 
 Status: planned.
 
@@ -253,25 +295,6 @@ Tasks:
 - Show mobility score distribution.
 - Show risky places during bad weather.
 - Show priority areas for local improvement.
-
-### Stage 8: Kafka Realtime Bonus
-
-Status: optional.
-
-Tasks:
-
-- Create Kafka topics.
-- Add producer scripts under `kafka/producers`.
-- Add consumer scripts under `kafka/consumers`.
-- Optionally add Spark Structured Streaming.
-
-Potential topics:
-
-```text
-accessibility.raw.establishments
-weather.raw.daily
-mobility.usage.scores
-```
 
 ### Stage 9: Final Deliverables
 
@@ -356,7 +379,7 @@ These workflows are fixed for the rest of the project. Every new stage must foll
 | Docker workflow | Service changes or startup | Validate compose; start needed services; inspect health. | Required services healthy. |
 | Airflow workflow | DAG or pipeline changes | Check import errors; run DAG test; inspect outputs. | DAG loads and test run succeeds. |
 | Spark workflow | Formatting/combination changes | Run Spark job; inspect schema/output. | Parquet output in correct layer. |
-| Kafka workflow | Realtime bonus work | Create topic; produce sample; consume sample. | Messages flow through Kafka. |
+| Kafka workflow | Streaming API ingestion work | Create topic; poll API; produce sample; consume sample; persist raw stream file. | Messages flow through Kafka and land in raw Data Lake. |
 | Git workflow | End of every stage | `git status`; `git add`; `git commit`; `git push`. | Clean branch synced with `origin/main`. |
 | Cleanup workflow | Container clutter appears | Inspect containers first; remove only exited one-off project containers. | Needed services remain healthy. |
 
@@ -448,6 +471,12 @@ Kafka:
 
 ```bash
 docker compose exec kafka kafka-topics --bootstrap-server localhost:9092 --list
+```
+
+Streaming API:
+
+```bash
+docker compose exec kafka kafka-topics --bootstrap-server localhost:9092 --describe --topic weather.raw.current
 ```
 
 Git:
