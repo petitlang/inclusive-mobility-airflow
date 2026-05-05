@@ -49,7 +49,7 @@ This table is the main project tracking source. Every stage update must keep thi
 | 0. Topic and sources | Step 1.1, Step 1.2 | Define theme and at least two data sources. | Choose inclusive mobility theme; choose AccesLibre and Open-Meteo. | Theme and API sources documented. | README review. | Done | `3b23dc4` |
 | 1. Airflow skeleton | Step 2 Data Pipeline | Create one Airflow DAG and clean project structure. | Remove classroom examples; create DAG; create `dags/lib`; create Data Lake folders; add base tests. | `inclusive_mobility_daily_pipeline` loads in Airflow. | `airflow dags list-import-errors`; `airflow dags test`. | Done | `3b23dc4` |
 | 2. Spark/Kafka infrastructure | Spark architecture, Kafka bonus | Prepare Spark route and optional realtime route. | Add Spark master/worker; add Kafka/Zookeeper; add workspace folders; verify services. | Docker stack includes Airflow, Spark, Kafka and Zookeeper. | `docker compose ps`; Spark version; Kafka topic list. | Done | `f47f521` |
-| 3. Raw ingestion | Step 2.1 Ingestion | Fetch N data sources through REST APIs into raw Data Lake files. | Implement AccesLibre fetcher; implement Open-Meteo fetcher; store raw JSON; handle API parameters and pagination. | Raw API files under `datalake/raw/...`. | DAG test; file existence checks; raw JSON preview. | Planned |  |
+| 3. Raw ingestion | Step 2.1 Ingestion | Fetch N data sources through REST APIs into raw Data Lake files. | Implement AccesLibre fetcher; implement Open-Meteo fetcher; store raw JSON; handle API parameters and pagination. | Raw API files under `datalake/raw/...`. | DAG test; file existence checks; raw JSON preview. | Done | `5077f6a` |
 | 4. Spark formatting | Step 2.2 Formatting | Normalize raw data and write parquet files. | Create Spark jobs; normalize fields; clean dates; select useful columns; write parquet. | Parquet files under `datalake/formatted/...`. | Spark job run; parquet schema checks. | Planned |  |
 | 5. Spark combination and mobility score | Step 2.3 Combination | Join sources and create useful output. | Join accessibility and weather data; compute accessibility score, weather risk score and mobility score; create risk/prioritization outputs. | Usage parquet outputs under `datalake/usage/...`. | Spark job run; sample output checks. | Planned |  |
 | 6. Elasticsearch indexing | Step 2.4 Indexing | Expose final output to a search/dashboard layer. | Add Elasticsearch service; index usage outputs; define index mappings if needed. | Indexed mobility results. | Elasticsearch query returns documents. | Planned |  |
@@ -61,7 +61,7 @@ This table is the main project tracking source. Every stage update must keep thi
 
 | Score Area | How This Project Covers It | Status |
 | --- | --- | --- |
-| Ingestion into Data Lake | AccesLibre and Open-Meteo raw JSON files. | Planned |
+| Ingestion into Data Lake | AccesLibre and Open-Meteo raw JSON files. | Done |
 | Realtime via Kafka | Kafka service is installed; realtime path is optional bonus. | Optional |
 | Formatting to parquet | Spark formatting jobs will write parquet. | Planned |
 | Field normalization | Spark formatting will clean columns and date/time fields. | Planned |
@@ -147,22 +147,33 @@ docker compose exec kafka kafka-topics --bootstrap-server localhost:9092 --list
 
 ### Stage 3: Raw Ingestion
 
-Status: planned.
+Status: done.
 
-Tasks:
+Completed:
 
-- Implement AccesLibre REST API ingestion.
-- Implement Open-Meteo REST API ingestion.
-- Store raw responses without destructive transformation.
-- Keep API parameters configurable.
-- Add pagination or limits where required.
-- Add tests for request parameters and Data Lake paths.
+- Implemented AccesLibre raw ingestion through the public data.gouv tabular REST API.
+- Kept the official AccesLibre API URL documented in the raw payload.
+- Added a source note explaining that the direct AccesLibre endpoint currently requires an API key for anonymous calls.
+- Implemented Open-Meteo raw daily weather ingestion through the official forecast REST API.
+- Stored raw JSON responses without destructive transformation.
+- Added configurable limits for AccesLibre page size and page count.
+- Added configurable Open-Meteo forecast days and timezone.
+- Added tests for request URL construction and Data Lake path convention.
 
-Expected outputs:
+Outputs produced during verification:
 
 ```text
-datalake/raw/acces_libre/establishments/YYYYMMDD/accessibility.json
-datalake/raw/open_meteo/daily_weather/YYYYMMDD/weather.json
+datalake/raw/acces_libre/establishments/20260505/accessibility.json
+datalake/raw/open_meteo/daily_weather/20260505/weather.json
+```
+
+Verification result:
+
+```text
+AccesLibre raw records: 100
+Open-Meteo daily forecast days: 3
+Airflow DAG test: success
+Airflow import errors: none
 ```
 
 ### Stage 4: Spark Formatting
