@@ -52,7 +52,7 @@ This table is the main project tracking source. Every stage update must keep thi
 | 1. Airflow skeleton | Step 2 Data Pipeline | Create one Airflow DAG and clean project structure. | Remove classroom examples; create DAG; create `dags/lib`; create Data Lake folders; add base tests. | `inclusive_mobility_daily_pipeline` loads in Airflow. | `airflow dags list-import-errors`; `airflow dags test`. | Done | `3b23dc4` |
 | 2. Spark/Kafka infrastructure | Spark architecture, Kafka bonus | Prepare Spark route and optional realtime route. | Add Spark master/worker; add Kafka/Zookeeper; add workspace folders; verify services. | Docker stack includes Airflow, Spark, Kafka and Zookeeper. | `docker compose ps`; Spark version; Kafka topic list. | Done | `f47f521` |
 | 3. Raw ingestion | Step 2.1 Ingestion | Fetch N data sources through REST APIs into raw Data Lake files. | Implement AccesLibre fetcher; implement Open-Meteo fetcher; store raw JSON; handle API parameters and pagination. | Raw API files under `datalake/raw/...`. | DAG test; file existence checks; raw JSON preview. | Done | `6a089bb` |
-| 4. Streaming API ingestion with Kafka | Realtime via Kafka bonus | Poll a frequently refreshed API and push events into Kafka. | Create Kafka topic; implement Open-Meteo current/hourly weather producer; implement consumer that persists raw stream events. | Kafka messages and raw stream JSONL files. | Produce and consume sample messages in under 1 minute. | Planned |  |
+| 4. Streaming API ingestion with Kafka | Realtime via Kafka bonus | Poll a frequently refreshed API and push events into Kafka. | Create Kafka topic; implement Open-Meteo current weather producer; implement consumer that persists raw stream events. | Kafka messages and raw stream JSONL files. | Produce and consume sample messages in under 1 minute. | Done | pending |
 | 5. Spark formatting | Step 2.2 Formatting | Normalize raw data and write parquet files. | Create Spark jobs; normalize fields; clean dates; select useful columns; write parquet. | Parquet files under `datalake/formatted/...`. | Spark job run; parquet schema checks. | Planned |  |
 | 6. Spark combination and mobility score | Step 2.3 Combination | Join sources and create useful output. | Join accessibility and weather data; compute accessibility score, weather risk score and mobility score; create risk/prioritization outputs. | Usage parquet outputs under `datalake/usage/...`. | Spark job run; sample output checks. | Planned |  |
 | 7. Elasticsearch indexing | Step 2.4 Indexing | Expose final output to a search/dashboard layer. | Add Elasticsearch service; index usage outputs; define index mappings if needed. | Indexed mobility results. | Elasticsearch query returns documents. | Planned |  |
@@ -64,7 +64,7 @@ This table is the main project tracking source. Every stage update must keep thi
 | Score Area | How This Project Covers It | Status |
 | --- | --- | --- |
 | Ingestion into Data Lake | AccesLibre and Open-Meteo raw JSON files. | Done |
-| Realtime via Kafka | Kafka service is installed; Stage 4 will poll Open-Meteo as a near-realtime API source and publish weather events to Kafka. | Planned |
+| Realtime via Kafka | Open-Meteo current weather API is polled and published to Kafka topic `weather.raw.current`; consumer persists raw JSONL. | Done |
 | Formatting to parquet | Spark formatting jobs will write parquet. | Planned |
 | Field normalization | Spark formatting will clean columns and date/time fields. | Planned |
 | Use Spark | Spark services are installed; formatting and combination will use Spark. | In progress |
@@ -180,7 +180,7 @@ Airflow import errors: none
 
 ### Stage 4: Streaming API Ingestion with Kafka
 
-Status: planned.
+Status: done.
 
 Purpose:
 
@@ -188,34 +188,36 @@ Purpose:
 - Use an API polling pattern to create near-realtime events from a frequently refreshed source.
 - Keep AccesLibre as a batch/reference source and use Open-Meteo current/hourly weather as the streaming-like source.
 
-Tasks:
+Completed:
 
-- Create Kafka topic `weather.raw.current`.
-- Add an Open-Meteo producer under `kafka/producers`.
-- Poll Open-Meteo current or hourly weather data.
-- Publish each API response as a Kafka event.
-- Add a consumer under `kafka/consumers`.
-- Persist consumed events as raw JSONL stream files in the Data Lake.
-- Add a short verification script to produce and consume sample messages in under 1 minute.
+- Created Kafka topic `weather.raw.current`.
+- Added Open-Meteo current weather producer under `kafka/producers`.
+- Polls Open-Meteo current weather API.
+- Publishes each API response as a Kafka event.
+- Added consumer under `kafka/consumers`.
+- Persists consumed events as raw JSONL stream files in the Data Lake.
+- Added `kafka/verify_weather_stream.py` for end-to-end verification.
+- Added tests for current weather URL construction and raw stream path convention.
 
-Expected outputs:
+Outputs produced during verification:
 
 ```text
-datalake/raw/open_meteo/current_weather_stream/YYYYMMDD/events.jsonl
+datalake/raw/open_meteo/current_weather_stream/20260505/events.jsonl
 ```
 
-Expected Kafka topic:
+Kafka topic:
 
 ```text
 weather.raw.current
 ```
 
-Verification target:
+Verification result:
 
 ```text
-Producer sends Open-Meteo API events to Kafka.
-Consumer receives events and writes raw JSONL.
-End-to-end sample completes in under 1 minute.
+Producer published 1 Open-Meteo current weather event.
+Consumer wrote 1 Kafka weather event to raw JSONL.
+End-to-end sample completed in about 13 seconds.
+Kafka topic weather.raw.current has 1 partition and replication factor 1.
 ```
 
 ### Stage 5: Spark Formatting

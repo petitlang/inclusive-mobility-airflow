@@ -28,6 +28,19 @@ OPEN_METEO_DAILY_VARIABLES = (
 )
 OPEN_METEO_FORECAST_DAYS = int(os.getenv("OPEN_METEO_FORECAST_DAYS", "3"))
 OPEN_METEO_TIMEZONE = os.getenv("OPEN_METEO_TIMEZONE", "Europe/Paris")
+OPEN_METEO_CURRENT_VARIABLES = (
+    "temperature_2m",
+    "relative_humidity_2m",
+    "apparent_temperature",
+    "precipitation",
+    "rain",
+    "weather_code",
+    "wind_speed_10m",
+    "wind_gusts_10m",
+)
+
+KAFKA_BOOTSTRAP_SERVER = os.getenv("KAFKA_BOOTSTRAP_SERVER", "localhost:9092")
+WEATHER_STREAM_TOPIC = os.getenv("WEATHER_STREAM_TOPIC", "weather.raw.current")
 
 DEFAULT_CITY = "Paris"
 DEFAULT_LATITUDE = 48.8566
