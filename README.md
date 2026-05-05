@@ -98,6 +98,8 @@ Tasks completed:
 - Document how each service is used.
 - Add Kafka and Zookeeper named volumes for local state.
 - Add Spark and Kafka workspace README files.
+- Remove unused exited one-off Airflow worker containers from previous temporary runs.
+- Keep the standard exited `airflow-init` container because it is part of the Docker Compose initialization flow.
 
 Services added:
 
@@ -138,6 +140,12 @@ docker compose ps
 docker compose exec spark-master /opt/spark/bin/spark-submit --version
 docker compose exec kafka kafka-topics --bootstrap-server localhost:9092 --list
 ```
+
+Cleanup note:
+
+- Removed exited one-off containers named `airflow-airflow-worker-run-*`.
+- Kept active Airflow, Spark, Kafka, Zookeeper, Postgres and Redis services.
+- Kept `airflow-airflow-init-1` because an exited status with code `0` is normal for the initialization service.
 
 Status: done.
 
