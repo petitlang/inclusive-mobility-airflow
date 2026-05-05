@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Local IDE and virtual environments
+.idea/
+.venv/
+venv/
+
+# Airflow runtime outputs
+logs/
+*.log
+
+# Keep the datalake folder structure, but do not commit generated data.
+datalake/raw/*
+!datalake/raw/.gitkeep
+datalake/formatted/*
+!datalake/formatted/.gitkeep
+datalake/usage/*
+!datalake/usage/.gitkeep
+
+# Local OS files
+Thumbs.db
+.DS_Store
