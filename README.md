@@ -4,69 +4,103 @@ Airflow project for Groupe Lab 3 by Yuefan Liu and Mouzheng Li.
 
 This project supports mobility and inclusion for people with disabilities by combining public place accessibility data with daily weather conditions. It produces daily mobility scores to identify safer accessible places, highlight risky areas during bad weather, and help local communities prioritize accessibility improvements.
 
+## Architecture Choice
+
+The project follows the **Spark architecture** from `Big Data Project.pdf`.
+
+We do **not** use the DBT architecture. DBT is only mentioned in the PDF as an alternative route. Our transformation and combination layers will use Spark, orchestrated by Airflow.
+
+Fixed route:
+
+```text
+REST APIs
+  -> Airflow ingestion jobs
+  -> Data Lake raw layer
+  -> Spark formatting jobs
+  -> Data Lake formatted layer
+  -> Spark combination/scoring jobs
+  -> Data Lake usage layer
+  -> Elasticsearch indexing
+  -> Kibana dashboard
+```
+
+Optional bonus route:
+
+```text
+Kafka realtime ingestion
+  -> Spark streaming or consumer jobs
+  -> Data Lake / Elasticsearch
+  -> realtime dashboard
+```
+
 ## Project Sources
 
-| Source | Purpose | Link |
+| Source | Purpose | Refresh | Link |
+| --- | --- | --- | --- |
+| AccesLibre API | French public accessibility database for public establishments, including wheelchair access, ramps, steps, accessible toilets and parking. | Public reference data | <https://www.data.gouv.fr/dataservices/api-acces-libre> |
+| Open-Meteo API | Free weather API for temperature, precipitation, wind speed and weather conditions. | Daily / hourly | <https://open-meteo.com/en/docs> |
+
+## Reusable Progress Tracker
+
+This table is the main project tracking source. Every stage update must keep this table current.
+
+| Stage | PDF Requirement | Goal | Main Tasks | Expected Deliverable | Verification | Status | Commit |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 0. Topic and sources | Step 1.1, Step 1.2 | Define theme and at least two data sources. | Choose inclusive mobility theme; choose AccesLibre and Open-Meteo. | Theme and API sources documented. | README review. | Done | `3b23dc4` |
+| 1. Airflow skeleton | Step 2 Data Pipeline | Create one Airflow DAG and clean project structure. | Remove classroom examples; create DAG; create `dags/lib`; create Data Lake folders; add base tests. | `inclusive_mobility_daily_pipeline` loads in Airflow. | `airflow dags list-import-errors`; `airflow dags test`. | Done | `3b23dc4` |
+| 2. Spark/Kafka infrastructure | Spark architecture, Kafka bonus | Prepare Spark route and optional realtime route. | Add Spark master/worker; add Kafka/Zookeeper; add workspace folders; verify services. | Docker stack includes Airflow, Spark, Kafka and Zookeeper. | `docker compose ps`; Spark version; Kafka topic list. | Done | `f47f521` |
+| 3. Raw ingestion | Step 2.1 Ingestion | Fetch N data sources through REST APIs into raw Data Lake files. | Implement AccesLibre fetcher; implement Open-Meteo fetcher; store raw JSON; handle API parameters and pagination. | Raw API files under `datalake/raw/...`. | DAG test; file existence checks; raw JSON preview. | Planned |  |
+| 4. Spark formatting | Step 2.2 Formatting | Normalize raw data and write parquet files. | Create Spark jobs; normalize fields; clean dates; select useful columns; write parquet. | Parquet files under `datalake/formatted/...`. | Spark job run; parquet schema checks. | Planned |  |
+| 5. Spark combination and mobility score | Step 2.3 Combination | Join sources and create useful output. | Join accessibility and weather data; compute accessibility score, weather risk score and mobility score; create risk/prioritization outputs. | Usage parquet outputs under `datalake/usage/...`. | Spark job run; sample output checks. | Planned |  |
+| 6. Elasticsearch indexing | Step 2.4 Indexing | Expose final output to a search/dashboard layer. | Add Elasticsearch service; index usage outputs; define index mappings if needed. | Indexed mobility results. | Elasticsearch query returns documents. | Planned |  |
+| 7. Kibana dashboard | Data Viz / Dashboarding | Build dashboard on top of final result. | Add Kibana service; create visualizations for mobility scores, risky areas and improvement priorities. | Kibana dashboard. | Dashboard opens and displays indexed data. | Planned |  |
+| 8. Kafka realtime bonus | Realtime via Kafka bonus | Add optional near-realtime update flow. | Create Kafka topics; create producer/consumer scripts; optionally connect Spark streaming. | Kafka-based refresh path. | Produce and consume sample messages in under 1 minute. | Optional |  |
+| 9. Final deliverables | Deliverable section | Prepare final hand-in package. | Write max 10-page PDF; record max 10-minute video; prepare code zip; final README cleanup. | PDF, video and code zip. | Final run from Airflow DAG; deliverable review. | Planned |  |
+
+## Score Mapping
+
+| Score Area | How This Project Covers It | Status |
 | --- | --- | --- |
-| AccesLibre API | French public accessibility database for public establishments, including wheelchair access, ramps, steps, accessible toilets and parking. | <https://www.data.gouv.fr/dataservices/api-acces-libre> |
-| Open-Meteo API | Free weather API for temperature, precipitation, wind speed and weather conditions. | <https://open-meteo.com/en/docs> |
+| Ingestion into Data Lake | AccesLibre and Open-Meteo raw JSON files. | Planned |
+| Realtime via Kafka | Kafka service is installed; realtime path is optional bonus. | Optional |
+| Formatting to parquet | Spark formatting jobs will write parquet. | Planned |
+| Field normalization | Spark formatting will clean columns and date/time fields. | Planned |
+| Use Spark | Spark services are installed; formatting and combination will use Spark. | In progress |
+| Combination output | Mobility score, risky areas and improvement priorities. | Planned |
+| Indexing | Elasticsearch indexing stage. | Planned |
+| Dashboard | Kibana dashboard stage. | Planned |
+| Clean naming convention | Fixed Data Lake convention below. | In progress |
+| Run all at once | One Airflow DAG will orchestrate ingestion, formatting, combination and indexing. | Planned |
+| Innovative output | Inclusive mobility score for accessibility and weather risk. | Planned |
+| DBT bonus | Not used. We choose Spark route instead. | Not applicable |
 
-## Current Status
+## Stage Details
 
-| Stage | Status | Summary |
-| --- | --- | --- |
-| Stage 0 | Done | Read project instructions, selected project topic and source APIs. |
-| Stage 1 | Done | Removed classroom examples and scaffolded the Airflow project. |
-| Stage 2 | Done | Added Spark and Kafka infrastructure to Docker Compose. |
-| Stage 3 | Planned | Implement raw extraction from AccesLibre and Open-Meteo. |
-| Stage 4 | Planned | Convert raw API data into formatted parquet datasets. |
-| Stage 5 | Planned | Compute mobility scores and risk outputs in the usage layer. |
-| Stage 6 | Planned | Add optional Kafka streaming path and Spark processing jobs. |
-| Stage 7 | Planned | Final validation, documentation, and presentation outputs. |
-
-## Stage Plan
-
-### Stage 0: Topic and Requirements
-
-Goal: define the project scope and map it to the class Big Data pipeline structure.
-
-Tasks:
-
-- Choose the project theme: inclusive mobility, accessibility and weather risk.
-- Select AccesLibre as the public accessibility source.
-- Select Open-Meteo as the daily weather source.
-- Align the project with the class architecture: extraction, raw layer, formatted layer, usage layer.
-
-Output:
-
-- Project theme and API choices are defined.
-- Data Lake convention is selected.
+### Stage 0: Topic and Sources
 
 Status: done.
 
+Completed:
+
+- Chose theme: Inclusive Mobility, Accessibility and Weather Risk Analysis.
+- Chose AccesLibre as accessibility source.
+- Chose Open-Meteo as weather source.
+- Confirmed that Open-Meteo can refresh at least daily.
+
 ### Stage 1: Airflow Skeleton
 
-Goal: replace classroom demo files with a clean project scaffold.
+Status: done.
 
-Tasks completed:
+Completed:
 
-- Removed old classroom DAG files.
-- Removed old demo helper and test files.
-- Removed old Python caches and demo DAG logs.
-- Added the `inclusive_mobility_daily_pipeline` DAG.
-- Added reusable Python modules under `dags/lib`.
-- Added basic tests for path convention and mobility score calculation.
-- Added the local Data Lake folder with `raw`, `formatted`, and `usage` layers.
-- Disabled Airflow example DAGs in Docker Compose.
-- Mounted `datalake` into Airflow containers.
+- Removed classroom DAG files and old helper/test files.
+- Added `inclusive_mobility_daily_pipeline`.
+- Added reusable modules under `dags/lib`.
+- Added `datalake/raw`, `datalake/formatted`, and `datalake/usage`.
+- Disabled Airflow example DAGs.
+- Mounted local Data Lake into Airflow containers.
 - Added `.env` with `AIRFLOW_UID=50000`.
-- Deleted old classroom DAG metadata from the Airflow database.
-
-Output:
-
-- Airflow can load the project DAG without import errors.
-- The DAG can run end-to-end with placeholder tasks.
-- The local project is committed and pushed to GitHub.
+- Deleted old classroom DAG metadata from Airflow.
 
 Verification:
 
@@ -76,55 +110,25 @@ docker compose exec airflow-scheduler airflow dags list-import-errors
 docker compose exec airflow-scheduler airflow dags test inclusive_mobility_daily_pipeline 2026-05-05
 ```
 
+### Stage 2: Spark and Kafka Infrastructure
+
 Status: done.
 
-Git commit:
+Completed:
 
-```text
-3b23dc4 Stage 1: scaffold inclusive mobility Airflow project
-```
-
-### Stage 2: Big Data Infrastructure
-
-Goal: prepare the project for batch and streaming components while keeping Airflow as the orchestrator.
-
-Tasks completed:
-
-- Add Spark services to Docker Compose.
-- Add Kafka services to Docker Compose.
-- Add project folders for Spark jobs and Kafka producers/consumers.
-- Add environment variables and volume mounts needed by Spark and Kafka.
-- Keep Airflow responsible for scheduling, not heavy computation.
-- Document how each service is used.
-- Add Kafka and Zookeeper named volumes for local state.
-- Add Spark and Kafka workspace README files.
-- Remove unused exited one-off Airflow worker containers from previous temporary runs.
-- Keep the standard exited `airflow-init` container because it is part of the Docker Compose initialization flow.
-
-Services added:
-
-- `spark-master` using `apache/spark:3.5.1`
-- `spark-worker` using `apache/spark:3.5.1`
-- `zookeeper` using `confluentinc/cp-zookeeper:7.6.1`
-- `kafka` using `confluentinc/cp-kafka:7.6.1`
-
-Folders added:
-
-```text
-spark/
-  README.md
-  jobs/
-  notebooks/
-kafka/
-  README.md
-  producers/
-  consumers/
-```
+- Added `spark-master` and `spark-worker` using `apache/spark:3.5.1`.
+- Added `zookeeper` using `confluentinc/cp-zookeeper:7.6.1`.
+- Added `kafka` using `confluentinc/cp-kafka:7.6.1`.
+- Added Kafka and Zookeeper named volumes.
+- Added `spark/jobs`, `spark/notebooks`, `kafka/producers`, and `kafka/consumers`.
+- Removed unused exited one-off Airflow worker containers from previous temporary runs.
+- Kept `airflow-init` because an exited code `0` is normal for the init service.
 
 Local ports:
 
 | Service | Local URL or port |
 | --- | --- |
+| Airflow UI | <http://localhost:8080> |
 | Spark master UI | <http://localhost:8081> |
 | Spark worker UI | <http://localhost:8082> |
 | Spark master endpoint | `spark://localhost:7077` |
@@ -141,71 +145,60 @@ docker compose exec spark-master /opt/spark/bin/spark-submit --version
 docker compose exec kafka kafka-topics --bootstrap-server localhost:9092 --list
 ```
 
-Cleanup note:
+### Stage 3: Raw Ingestion
 
-- Removed exited one-off containers named `airflow-airflow-worker-run-*`.
-- Kept active Airflow, Spark, Kafka, Zookeeper, Postgres and Redis services.
-- Kept `airflow-airflow-init-1` because an exited status with code `0` is normal for the initialization service.
+Status: planned.
 
-Status: done.
+Tasks:
 
-### Stage 3: Raw Data Extraction
+- Implement AccesLibre REST API ingestion.
+- Implement Open-Meteo REST API ingestion.
+- Store raw responses without destructive transformation.
+- Keep API parameters configurable.
+- Add pagination or limits where required.
+- Add tests for request parameters and Data Lake paths.
 
-Goal: fetch source data and save raw untouched API responses into the Data Lake.
-
-Tasks planned:
-
-- Implement AccesLibre API extraction.
-- Implement Open-Meteo API extraction.
-- Save source responses as JSON in the raw layer.
-- Add pagination or query limits where needed.
-- Add simple tests around request construction and output paths.
-
-Expected raw outputs:
+Expected outputs:
 
 ```text
 datalake/raw/acces_libre/establishments/YYYYMMDD/accessibility.json
 datalake/raw/open_meteo/daily_weather/YYYYMMDD/weather.json
 ```
 
+### Stage 4: Spark Formatting
+
 Status: planned.
 
-### Stage 4: Formatted Data Layer
+Tasks:
 
-Goal: convert raw JSON into clean analysis-ready datasets.
+- Create Spark formatting jobs in `spark/jobs`.
+- Normalize AccesLibre records into a clean establishments table.
+- Normalize Open-Meteo records into a clean daily weather table.
+- Clean field names and date/time values.
+- Write parquet files to the formatted layer.
 
-Tasks planned:
-
-- Normalize AccesLibre establishments into tabular records.
-- Normalize Open-Meteo weather values into daily records.
-- Convert formatted outputs to parquet.
-- Keep one table schema per Data Lake table folder.
-- Add data quality checks for required fields.
-
-Expected formatted outputs:
+Expected outputs:
 
 ```text
 datalake/formatted/acces_libre/establishments/YYYYMMDD/establishments.snappy.parquet
 datalake/formatted/open_meteo/daily_weather/YYYYMMDD/weather.snappy.parquet
 ```
 
+### Stage 5: Spark Combination and Mobility Score
+
 Status: planned.
 
-### Stage 5: Usage Layer and Mobility Score
+Tasks:
 
-Goal: create the final project value from accessibility and weather data.
-
-Tasks planned:
-
-- Join accessibility and weather datasets.
+- Join formatted accessibility and weather datasets.
 - Define an accessibility score.
 - Define a weather risk score.
-- Compute a daily mobility score from both inputs.
+- Compute a daily mobility score.
 - Produce safer accessible places.
 - Produce risky areas during bad weather.
-- Produce local improvement priority outputs.
+- Produce accessibility improvement priorities.
 
-Expected usage outputs:
+Expected outputs:
 
 ```text
 datalake/usage/inclusive_mobility/mobility_scores/YYYYMMDD/scores.snappy.parquet
@@ -213,32 +206,55 @@ datalake/usage/inclusive_mobility/risky_areas/YYYYMMDD/risky_areas.snappy.parque
 datalake/usage/inclusive_mobility/improvement_priorities/YYYYMMDD/priorities.snappy.parquet
 ```
 
-Initial score formula placeholder:
+Initial formula:
 
 ```text
 mobility_score = accessibility_score * 0.7 + (100 - weather_risk_score) * 0.3
 ```
 
+### Stage 6: Elasticsearch Indexing
+
 Status: planned.
 
-### Stage 6: Spark and Kafka Extension
+Tasks:
 
-Goal: show a Big Data-ready architecture beyond simple local Python processing.
+- Add Elasticsearch to Docker Compose.
+- Create an indexing job triggered by Airflow.
+- Index final usage outputs.
+- Keep index names stable and documented.
 
-Spark tasks planned:
+Expected indices:
 
-- Move heavier transformations into Spark jobs.
-- Let Airflow trigger Spark jobs.
-- Use Spark to produce formatted and usage layer parquet files.
+```text
+inclusive_mobility_scores
+inclusive_mobility_risky_areas
+inclusive_mobility_improvement_priorities
+```
 
-Kafka tasks planned:
+### Stage 7: Kibana Dashboard
 
-- Reserve a topic for weather events.
-- Reserve a topic for accessibility updates.
-- Add simple producers for simulated updates.
-- Add consumers or Spark Structured Streaming jobs if time allows.
+Status: planned.
 
-Potential Kafka topics:
+Tasks:
+
+- Add Kibana to Docker Compose.
+- Create dashboard visualizations.
+- Show mobility score distribution.
+- Show risky places during bad weather.
+- Show priority areas for local improvement.
+
+### Stage 8: Kafka Realtime Bonus
+
+Status: optional.
+
+Tasks:
+
+- Create Kafka topics.
+- Add producer scripts under `kafka/producers`.
+- Add consumer scripts under `kafka/consumers`.
+- Optionally add Spark Structured Streaming.
+
+Potential topics:
 
 ```text
 accessibility.raw.establishments
@@ -246,71 +262,34 @@ weather.raw.daily
 mobility.usage.scores
 ```
 
-Status: planned.
-
-### Stage 7: Final Wrap-Up
-
-Goal: make the project easy to run, explain and present.
-
-Tasks planned:
-
-- Add final setup instructions.
-- Add pipeline diagram.
-- Add sample output description.
-- Add troubleshooting notes.
-- Add final screenshots or validation logs if needed.
-- Ensure every completed stage has a Git commit and push.
+### Stage 9: Final Deliverables
 
 Status: planned.
 
-## Architecture
+Tasks:
 
-```text
-AccesLibre API       Open-Meteo API
-      |                    |
-      v                    v
-Airflow extraction tasks
-      |
-      v
-datalake/raw
-      |
-      v
-Airflow / Spark formatting tasks
-      |
-      v
-datalake/formatted
-      |
-      v
-Airflow / Spark scoring tasks
-      |
-      v
-datalake/usage
-```
-
-Spark and Kafka reserved architecture:
-
-```text
-Kafka producers -> Kafka topics -> Spark streaming or batch jobs -> Data Lake
-                                      ^
-                                      |
-                                  Airflow orchestration
-```
+- Write final PDF report, maximum 10 pages.
+- Record final video, maximum 10 minutes.
+- Prepare code zip.
+- Ensure one Airflow DAG can run the full pipeline.
+- Update README with final status and troubleshooting.
 
 ## Data Lake Convention
 
-Every dataset follows this structure:
+All project outputs must follow this path convention:
 
 ```text
-/{layer}/{group}/{TableName}/{date}/filename
+datalake/{layer}/{group}/{dataEntity}/{YYYYMMDD}/{filename}
 ```
 
-Where:
+Rules:
 
-- `layer`: `raw`, `formatted`, or `usage`.
-- `group`: source system name for raw/formatted data, or usage name for final outputs.
-- `TableName`: data object with a stable schema.
-- `date`: partition date in `YYYYMMDD` format.
-- `filename`: source JSON, parquet output, or another explicit file name.
+- `layer` is `raw`, `formatted`, or `usage`.
+- `group` is the source name for raw/formatted data, or the usage name for final outputs.
+- `dataEntity` is a stable table/data object name.
+- `YYYYMMDD` is the partition date.
+- Files in one `dataEntity` folder must share the same schema.
+- Generated data files are local runtime outputs and should not be committed.
 
 Examples:
 
@@ -319,7 +298,7 @@ datalake/raw/acces_libre/establishments/20260505/accessibility.json
 datalake/raw/open_meteo/daily_weather/20260505/weather.json
 datalake/formatted/acces_libre/establishments/20260505/establishments.snappy.parquet
 datalake/formatted/open_meteo/daily_weather/20260505/weather.snappy.parquet
-datalake/usage/inclusive_mobility/mobility_scores/20260505/scores.json
+datalake/usage/inclusive_mobility/mobility_scores/20260505/scores.snappy.parquet
 ```
 
 ## Repository Structure
@@ -359,58 +338,50 @@ airflow/
 
 These workflows are fixed for the rest of the project. Every new stage must follow them unless the README is updated in the same commit.
 
-### 1. Stage Workflow
+| Workflow | When to Use | Fixed Steps | Required Output |
+| --- | --- | --- | --- |
+| Stage workflow | Every project stage | Read tracker; implement only current stage; update tracker; verify; commit; push. | One stage commit on GitHub. |
+| Documentation workflow | Any plan/progress change | Update README; check diff; commit with `Docs:`; push. | README reflects reality. |
+| Docker workflow | Service changes or startup | Validate compose; start needed services; inspect health. | Required services healthy. |
+| Airflow workflow | DAG or pipeline changes | Check import errors; run DAG test; inspect outputs. | DAG loads and test run succeeds. |
+| Spark workflow | Formatting/combination changes | Run Spark job; inspect schema/output. | Parquet output in correct layer. |
+| Kafka workflow | Realtime bonus work | Create topic; produce sample; consume sample. | Messages flow through Kafka. |
+| Git workflow | End of every stage | `git status`; `git add`; `git commit`; `git push`. | Clean branch synced with `origin/main`. |
+| Cleanup workflow | Container clutter appears | Inspect containers first; remove only exited one-off project containers. | Needed services remain healthy. |
 
-Each stage must be completed as a self-contained unit.
-
-Steps:
-
-```text
-1. Read the current README stage plan.
-2. Implement only the tasks belonging to the current stage.
-3. Update README with what was completed, what was verified, and any known limitation.
-4. Run the verification commands for the affected services.
-5. Commit with a stage-based message.
-6. Push to GitHub.
-```
-
-Commit message format:
+### Stage Workflow
 
 ```text
-Stage N: short action description
+1. Read the progress tracker.
+2. Implement only the current stage.
+3. Update the tracker row: tasks, deliverable, verification, status and commit.
+4. Run affected verification commands.
+5. Commit and push.
 ```
 
-Documentation-only updates use:
+### Local Development Workflow
 
-```text
-Docs: short documentation description
-```
-
-### 2. Local Development Workflow
-
-Use the project root as the working directory:
+Use the project root:
 
 ```bash
 cd D:\airflow-pycharm-docker\airflow
 ```
 
-Before making changes:
+Before changes:
 
 ```bash
 git status --short --branch
 docker compose ps
 ```
 
-After making changes:
+After changes:
 
 ```bash
 git diff --stat
 git status --short
 ```
 
-No generated logs, caches, or Data Lake data files should be committed.
-
-### 3. Docker Workflow
+### Docker Workflow
 
 Start the complete stack:
 
@@ -418,19 +389,13 @@ Start the complete stack:
 docker compose up -d
 ```
 
-Start only infrastructure services added in Stage 2:
+Start only Spark/Kafka infrastructure:
 
 ```bash
 docker compose up -d zookeeper kafka spark-master spark-worker
 ```
 
-Check all project containers:
-
-```bash
-docker compose ps -a
-```
-
-Expected long-running project services:
+Expected long-running services:
 
 ```text
 airflow-webserver
@@ -445,7 +410,7 @@ zookeeper
 kafka
 ```
 
-Expected exited project service:
+Expected exited service:
 
 ```text
 airflow-init
@@ -453,39 +418,37 @@ airflow-init
 
 `airflow-init` exits with code `0` after initialization. This is normal and it should be kept.
 
-### 4. Verification Workflow
+### Verification Workflow
 
-Airflow verification:
+Airflow:
 
 ```bash
 docker compose exec airflow-scheduler airflow dags list-import-errors
 docker compose exec airflow-scheduler airflow dags test inclusive_mobility_daily_pipeline 2026-05-05
 ```
 
-Spark verification:
+Spark:
 
 ```bash
 docker compose exec spark-master /opt/spark/bin/spark-submit --version
 ```
 
-Kafka verification:
+Kafka:
 
 ```bash
 docker compose exec kafka kafka-topics --bootstrap-server localhost:9092 --list
 ```
 
-Repository verification:
+Git:
 
 ```bash
 git status --short --branch
 git log --oneline -5
 ```
 
-### 5. Git Workflow
+### Git Workflow
 
-Every completed stage must be pushed to GitHub.
-
-Steps:
+Stage commit:
 
 ```bash
 git status --short
@@ -494,7 +457,7 @@ git commit -m "Stage N: short description"
 git push
 ```
 
-For documentation-only updates:
+Documentation commit:
 
 ```bash
 git add README.md
@@ -502,31 +465,15 @@ git commit -m "Docs: short description"
 git push
 ```
 
-Current remote:
+Remote:
 
 ```text
 https://github.com/petitlang/inclusive-mobility-airflow.git
 ```
 
-### 6. Data Lake Workflow
+### Container Cleanup Workflow
 
-All project outputs must follow the fixed Data Lake path convention:
-
-```text
-datalake/{layer}/{group}/{TableName}/{YYYYMMDD}/{filename}
-```
-
-Rules:
-
-- Raw files keep the original source response as much as possible.
-- Formatted files are cleaned and analysis-ready.
-- Usage files are final project outputs.
-- One `TableName` folder must contain files with the same schema.
-- Generated data files are local runtime outputs and should not be committed.
-
-### 7. Container Cleanup Workflow
-
-Before cleaning containers, inspect them:
+Inspect first:
 
 ```bash
 docker compose ps -a
@@ -549,86 +496,3 @@ Non-project containers unless explicitly requested
 ```
 
 Do not remove Docker volumes unless the goal is to reset stored data.
-
-## Run Airflow
-
-Start the local stack:
-
-```bash
-docker compose up
-```
-
-Airflow UI:
-
-```text
-http://localhost:8080
-```
-
-Default local credentials:
-
-```text
-airflow / airflow
-```
-
-Spark UI:
-
-```text
-http://localhost:8081
-```
-
-Kafka broker:
-
-```text
-localhost:9092
-```
-
-## Verify the Current Stage
-
-Check containers:
-
-```bash
-docker compose ps
-```
-
-Check DAG import errors:
-
-```bash
-docker compose exec airflow-scheduler airflow dags list-import-errors
-```
-
-Run the DAG once:
-
-```bash
-docker compose exec airflow-scheduler airflow dags test inclusive_mobility_daily_pipeline 2026-05-05
-```
-
-Check Spark:
-
-```bash
-docker compose exec spark-master /opt/spark/bin/spark-submit --version
-```
-
-Check Kafka:
-
-```bash
-docker compose exec kafka kafka-topics --bootstrap-server localhost:9092 --list
-```
-
-## Git Workflow
-
-Each completed stage should be committed and pushed separately.
-
-Current remote:
-
-```text
-https://github.com/petitlang/inclusive-mobility-airflow.git
-```
-
-Workflow:
-
-```bash
-git status
-git add .
-git commit -m "Stage N: short description"
-git push
-```
