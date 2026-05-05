@@ -53,7 +53,7 @@ This table is the main project tracking source. Every stage update must keep thi
 | 2. Spark/Kafka infrastructure | Spark architecture, Kafka bonus | Prepare Spark route and optional realtime route. | Add Spark master/worker; add Kafka/Zookeeper; add workspace folders; verify services. | Docker stack includes Airflow, Spark, Kafka and Zookeeper. | `docker compose ps`; Spark version; Kafka topic list. | Done | `f47f521` |
 | 3. Raw ingestion | Step 2.1 Ingestion | Fetch N data sources through REST APIs into raw Data Lake files. | Implement AccesLibre fetcher; implement Open-Meteo fetcher; store raw JSON; handle API parameters and pagination. | Raw API files under `datalake/raw/...`. | DAG test; file existence checks; raw JSON preview. | Done | `6a089bb` |
 | 4. Streaming API ingestion with Kafka | Realtime via Kafka bonus | Poll a frequently refreshed API and push events into Kafka. | Create Kafka topic; implement Open-Meteo current weather producer; implement consumer that persists raw stream events. | Kafka messages and raw stream JSONL files. | Produce and consume sample messages in under 1 minute. | Done | `e29e1ad` |
-| 5. Spark formatting | Step 2.2 Formatting | Normalize raw data and write parquet files. | Create Spark jobs; normalize fields; clean dates; select useful columns; write parquet. | Parquet files under `datalake/formatted/...`. | Spark job run; parquet schema checks. | Planned |  |
+| 5. Spark formatting | Step 2.2 Formatting | Normalize raw data and write parquet files. | Create Spark jobs; normalize fields; clean dates; select useful columns; write parquet; fix Spark Data Lake write permissions for local Docker. | Parquet files under `datalake/formatted/...`. | Spark jobs succeeded; parquet readback returned 100 accessibility rows and 3 weather rows. | Done | `536a597` |
 | 6. Spark combination and mobility score | Step 2.3 Combination | Join sources and create useful output. | Join accessibility and weather data; compute accessibility score, weather risk score and mobility score; create risk/prioritization outputs. | Usage parquet outputs under `datalake/usage/...`. | Spark job run; sample output checks. | Planned |  |
 | 7. Elasticsearch indexing | Step 2.4 Indexing | Expose final output to a search/dashboard layer. | Add Elasticsearch service; index usage outputs; define index mappings if needed. | Indexed mobility results. | Elasticsearch query returns documents. | Planned |  |
 | 8. Kibana dashboard | Data Viz / Dashboarding | Build dashboard on top of final result. | Add Kibana service; create visualizations for mobility scores, risky areas and improvement priorities. | Kibana dashboard. | Dashboard opens and displays indexed data. | Planned |  |
@@ -65,9 +65,9 @@ This table is the main project tracking source. Every stage update must keep thi
 | --- | --- | --- |
 | Ingestion into Data Lake | AccesLibre and Open-Meteo raw JSON files. | Done |
 | Realtime via Kafka | Open-Meteo current weather API is polled and published to Kafka topic `weather.raw.current`; consumer persists raw JSONL. | Done |
-| Formatting to parquet | Spark formatting jobs will write parquet. | Planned |
-| Field normalization | Spark formatting will clean columns and date/time fields. | Planned |
-| Use Spark | Spark services are installed; formatting and combination will use Spark. | In progress |
+| Formatting to parquet | Spark formatting jobs write AccesLibre and Open-Meteo daily weather parquet files. | Done |
+| Field normalization | Spark formatting cleans column names, selected fields and date/time values. | Done |
+| Use Spark | Spark services are installed and Stage 5 formatting jobs run with Spark. | In progress |
 | Combination output | Mobility score, risky areas and improvement priorities. | Planned |
 | Indexing | Elasticsearch indexing stage. | Planned |
 | Dashboard | Kibana dashboard stage. | Planned |
@@ -222,21 +222,34 @@ Kafka topic weather.raw.current has 1 partition and replication factor 1.
 
 ### Stage 5: Spark Formatting
 
-Status: planned.
+Status: done.
 
-Tasks:
+Completed:
 
-- Create Spark formatting jobs in `spark/jobs`.
-- Normalize AccesLibre records into a clean establishments table.
-- Normalize Open-Meteo records into a clean daily weather table.
-- Clean field names and date/time values.
-- Write parquet files to the formatted layer.
+- Created Spark formatting jobs in `spark/jobs`.
+- Normalized AccesLibre records into a clean establishments table.
+- Normalized Open-Meteo daily records into a clean daily weather table.
+- Cleaned field names and date/time values.
+- Wrote parquet datasets to the formatted layer.
+- Added a reusable Spark verifier for formatted parquet row counts.
+- Updated Airflow formatting placeholders so they describe Spark paths without pre-creating output partition directories.
+- Updated Spark containers to run as `root:root` in local Docker so Spark can write to the shared Windows bind-mounted Data Lake.
 
-Expected outputs:
+Outputs:
 
 ```text
-datalake/formatted/acces_libre/establishments/YYYYMMDD/establishments.snappy.parquet
-datalake/formatted/open_meteo/daily_weather/YYYYMMDD/weather.snappy.parquet
+datalake/formatted/acces_libre/establishments/YYYYMMDD/part-*.snappy.parquet
+datalake/formatted/open_meteo/daily_weather/YYYYMMDD/part-*.snappy.parquet
+```
+
+Verification result:
+
+```text
+Accessibility Spark formatting succeeded.
+Weather Spark formatting succeeded.
+Formatted accessibility parquet readback: 100 rows.
+Formatted weather parquet readback: 3 rows.
+Airflow DAG import errors: No data found.
 ```
 
 ### Stage 6: Spark Combination and Mobility Score
@@ -475,6 +488,9 @@ Spark:
 
 ```bash
 docker compose exec spark-master /opt/spark/bin/spark-submit --version
+docker compose exec spark-master /opt/spark/bin/spark-submit /opt/spark/jobs/format_accessibility.py --raw-path /opt/spark/datalake/raw/acces_libre/establishments/20260505/accessibility.json --output-path /opt/spark/datalake/formatted/acces_libre/establishments/20260505
+docker compose exec spark-master /opt/spark/bin/spark-submit /opt/spark/jobs/format_weather.py --raw-path /opt/spark/datalake/raw/open_meteo/daily_weather/20260505/weather.json --output-path /opt/spark/datalake/formatted/open_meteo/daily_weather/20260505
+docker compose exec spark-master /opt/spark/bin/spark-submit /opt/spark/jobs/verify_formatted_outputs.py --accessibility-path /opt/spark/datalake/formatted/acces_libre/establishments/20260505 --weather-path /opt/spark/datalake/formatted/open_meteo/daily_weather/20260505
 ```
 
 Kafka:
