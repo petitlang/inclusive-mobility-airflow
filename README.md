@@ -17,7 +17,7 @@ This project supports mobility and inclusion for people with disabilities by com
 | --- | --- | --- |
 | Stage 0 | Done | Read project instructions, selected project topic and source APIs. |
 | Stage 1 | Done | Removed classroom examples and scaffolded the Airflow project. |
-| Stage 2 | Planned | Add Spark and Kafka infrastructure space in Docker Compose. |
+| Stage 2 | Done | Added Spark and Kafka infrastructure to Docker Compose. |
 | Stage 3 | Planned | Implement raw extraction from AccesLibre and Open-Meteo. |
 | Stage 4 | Planned | Convert raw API data into formatted parquet datasets. |
 | Stage 5 | Planned | Compute mobility scores and risk outputs in the usage layer. |
@@ -88,7 +88,7 @@ Git commit:
 
 Goal: prepare the project for batch and streaming components while keeping Airflow as the orchestrator.
 
-Tasks planned:
+Tasks completed:
 
 - Add Spark services to Docker Compose.
 - Add Kafka services to Docker Compose.
@@ -96,32 +96,50 @@ Tasks planned:
 - Add environment variables and volume mounts needed by Spark and Kafka.
 - Keep Airflow responsible for scheduling, not heavy computation.
 - Document how each service is used.
+- Add Kafka and Zookeeper named volumes for local state.
+- Add Spark and Kafka workspace README files.
 
-Expected services:
+Services added:
 
-- `spark-master`
-- `spark-worker`
-- `kafka`
-- `zookeeper` or a KRaft-based Kafka setup, depending on the image selected.
+- `spark-master` using `apache/spark:3.5.1`
+- `spark-worker` using `apache/spark:3.5.1`
+- `zookeeper` using `confluentinc/cp-zookeeper:7.6.1`
+- `kafka` using `confluentinc/cp-kafka:7.6.1`
 
-Expected folders:
+Folders added:
 
 ```text
 spark/
+  README.md
   jobs/
   notebooks/
 kafka/
+  README.md
   producers/
   consumers/
 ```
 
-Expected output:
+Local ports:
 
-- `docker compose up` starts Airflow, Postgres, Redis, Spark and Kafka.
-- Spark UI is available locally.
-- Kafka broker is reachable from containers.
+| Service | Local URL or port |
+| --- | --- |
+| Spark master UI | <http://localhost:8081> |
+| Spark worker UI | <http://localhost:8082> |
+| Spark master endpoint | `spark://localhost:7077` |
+| Kafka broker | `localhost:9092` |
+| Zookeeper | `localhost:2181` |
 
-Status: planned.
+Verification:
+
+```bash
+docker compose config --services
+docker compose up -d zookeeper kafka spark-master spark-worker
+docker compose ps
+docker compose exec spark-master /opt/spark/bin/spark-submit --version
+docker compose exec kafka kafka-topics --bootstrap-server localhost:9092 --list
+```
+
+Status: done.
 
 ### Stage 3: Raw Data Extraction
 
@@ -314,22 +332,19 @@ airflow/
     raw/
     formatted/
     usage/
+  spark/
+    README.md
+    jobs/
+    notebooks/
+  kafka/
+    README.md
+    producers/
+    consumers/
   test/
     test_mobility_score.py
     test_paths.py
   docker-compose.yaml
   README.md
-```
-
-Future structure reserved for Stage 2:
-
-```text
-spark/
-  jobs/
-  notebooks/
-kafka/
-  producers/
-  consumers/
 ```
 
 ## Run Airflow
@@ -352,6 +367,18 @@ Default local credentials:
 airflow / airflow
 ```
 
+Spark UI:
+
+```text
+http://localhost:8081
+```
+
+Kafka broker:
+
+```text
+localhost:9092
+```
+
 ## Verify the Current Stage
 
 Check containers:
@@ -370,6 +397,18 @@ Run the DAG once:
 
 ```bash
 docker compose exec airflow-scheduler airflow dags test inclusive_mobility_daily_pipeline 2026-05-05
+```
+
+Check Spark:
+
+```bash
+docker compose exec spark-master /opt/spark/bin/spark-submit --version
+```
+
+Check Kafka:
+
+```bash
+docker compose exec kafka kafka-topics --bootstrap-server localhost:9092 --list
 ```
 
 ## Git Workflow
