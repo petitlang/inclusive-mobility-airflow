@@ -355,6 +355,201 @@ airflow/
   README.md
 ```
 
+## Fixed Workflows
+
+These workflows are fixed for the rest of the project. Every new stage must follow them unless the README is updated in the same commit.
+
+### 1. Stage Workflow
+
+Each stage must be completed as a self-contained unit.
+
+Steps:
+
+```text
+1. Read the current README stage plan.
+2. Implement only the tasks belonging to the current stage.
+3. Update README with what was completed, what was verified, and any known limitation.
+4. Run the verification commands for the affected services.
+5. Commit with a stage-based message.
+6. Push to GitHub.
+```
+
+Commit message format:
+
+```text
+Stage N: short action description
+```
+
+Documentation-only updates use:
+
+```text
+Docs: short documentation description
+```
+
+### 2. Local Development Workflow
+
+Use the project root as the working directory:
+
+```bash
+cd D:\airflow-pycharm-docker\airflow
+```
+
+Before making changes:
+
+```bash
+git status --short --branch
+docker compose ps
+```
+
+After making changes:
+
+```bash
+git diff --stat
+git status --short
+```
+
+No generated logs, caches, or Data Lake data files should be committed.
+
+### 3. Docker Workflow
+
+Start the complete stack:
+
+```bash
+docker compose up -d
+```
+
+Start only infrastructure services added in Stage 2:
+
+```bash
+docker compose up -d zookeeper kafka spark-master spark-worker
+```
+
+Check all project containers:
+
+```bash
+docker compose ps -a
+```
+
+Expected long-running project services:
+
+```text
+airflow-webserver
+airflow-scheduler
+airflow-worker
+airflow-triggerer
+postgres
+redis
+spark-master
+spark-worker
+zookeeper
+kafka
+```
+
+Expected exited project service:
+
+```text
+airflow-init
+```
+
+`airflow-init` exits with code `0` after initialization. This is normal and it should be kept.
+
+### 4. Verification Workflow
+
+Airflow verification:
+
+```bash
+docker compose exec airflow-scheduler airflow dags list-import-errors
+docker compose exec airflow-scheduler airflow dags test inclusive_mobility_daily_pipeline 2026-05-05
+```
+
+Spark verification:
+
+```bash
+docker compose exec spark-master /opt/spark/bin/spark-submit --version
+```
+
+Kafka verification:
+
+```bash
+docker compose exec kafka kafka-topics --bootstrap-server localhost:9092 --list
+```
+
+Repository verification:
+
+```bash
+git status --short --branch
+git log --oneline -5
+```
+
+### 5. Git Workflow
+
+Every completed stage must be pushed to GitHub.
+
+Steps:
+
+```bash
+git status --short
+git add .
+git commit -m "Stage N: short description"
+git push
+```
+
+For documentation-only updates:
+
+```bash
+git add README.md
+git commit -m "Docs: short description"
+git push
+```
+
+Current remote:
+
+```text
+https://github.com/petitlang/inclusive-mobility-airflow.git
+```
+
+### 6. Data Lake Workflow
+
+All project outputs must follow the fixed Data Lake path convention:
+
+```text
+datalake/{layer}/{group}/{TableName}/{YYYYMMDD}/{filename}
+```
+
+Rules:
+
+- Raw files keep the original source response as much as possible.
+- Formatted files are cleaned and analysis-ready.
+- Usage files are final project outputs.
+- One `TableName` folder must contain files with the same schema.
+- Generated data files are local runtime outputs and should not be committed.
+
+### 7. Container Cleanup Workflow
+
+Before cleaning containers, inspect them:
+
+```bash
+docker compose ps -a
+docker ps -a --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
+```
+
+Safe to remove:
+
+```text
+Exited one-off containers with names like airflow-airflow-worker-run-*
+```
+
+Keep:
+
+```text
+Running project services
+airflow-airflow-init-1
+Named Docker volumes for Postgres, Kafka and Zookeeper
+Non-project containers unless explicitly requested
+```
+
+Do not remove Docker volumes unless the goal is to reset stored data.
+
 ## Run Airflow
 
 Start the local stack:
