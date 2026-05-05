@@ -16,11 +16,29 @@ from lib.paths import ensure_datalake_dir
 
 
 def build_acces_libre_url(page: int = 1, page_size: int = ACCES_LIBRE_PAGE_SIZE) -> str:
+    """Build the public data.gouv tabular API URL for AccesLibre records.
+
+    Args:
+        page: One-based page number to request.
+        page_size: Number of records requested for the page.
+
+    Returns:
+        Fully qualified HTTPS URL with pagination query parameters.
+    """
     query = urlencode({"page": page, "page_size": page_size})
     return f"{ACCES_LIBRE_TABULAR_API_URL}?{query}"
 
 
 def request_json(url: str, timeout: int = 30) -> dict[str, Any]:
+    """Request JSON from an HTTP endpoint.
+
+    Args:
+        url: HTTP or HTTPS URL to call.
+        timeout: Network timeout in seconds.
+
+    Returns:
+        Decoded JSON object as a dictionary.
+    """
     request = Request(url, headers={"Accept": "application/json"})
     with urlopen(request, timeout=timeout) as response:
         charset = response.headers.get_content_charset() or "utf-8"
@@ -31,6 +49,16 @@ def fetch_acces_libre_pages(
     page_size: int = ACCES_LIBRE_PAGE_SIZE,
     max_pages: int = ACCES_LIBRE_MAX_PAGES,
 ) -> list[dict[str, Any]]:
+    """Fetch a bounded set of AccesLibre tabular API pages.
+
+    Args:
+        page_size: Number of records requested per API page.
+        max_pages: Maximum number of pages to fetch.
+
+    Returns:
+        A list of page envelopes containing the page number, request URL and raw
+        API response.
+    """
     pages = []
     for page in range(1, max_pages + 1):
         url = build_acces_libre_url(page=page, page_size=page_size)
@@ -44,7 +72,17 @@ def fetch_acces_libre_pages(
 
 
 def fetch_accessibility_data(**kwargs) -> str:
-    """Fetch a raw AccesLibre sample through the public data.gouv tabular API."""
+    """Fetch AccesLibre raw records and write them to the Data Lake.
+
+    Args:
+        **kwargs: Airflow context arguments, currently unused.
+
+    Returns:
+        String path to the raw JSON file written.
+
+    Side effects:
+        Creates `datalake/raw/acces_libre/establishments/YYYYMMDD/accessibility.json`.
+    """
     target_dir = ensure_datalake_dir("raw", "acces_libre", "establishments")
     target_file = target_dir / "accessibility.json"
     pages = fetch_acces_libre_pages()

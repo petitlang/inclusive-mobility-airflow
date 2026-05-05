@@ -378,6 +378,7 @@ These workflows are fixed for the rest of the project. Every new stage must foll
 | --- | --- | --- | --- |
 | Stage workflow | Every project stage | Read tracker; implement only current stage; update tracker; verify; commit; push. | One stage commit on GitHub. |
 | Documentation workflow | Any plan/progress change | Update README; check diff; commit with `Docs:`; push. | README reflects reality. |
+| Code documentation workflow | Every code change | Add or update docstrings for public functions, especially inputs, outputs and side effects. | Key functions explain args, return values and written files/messages. |
 | Docker workflow | Service changes or startup | Validate compose; start needed services; inspect health. | Required services healthy. |
 | Airflow workflow | DAG or pipeline changes | Check import errors; run DAG test; inspect outputs. | DAG loads and test run succeeds. |
 | Spark workflow | Formatting/combination changes | Run Spark job; inspect schema/output. | Parquet output in correct layer. |
@@ -416,6 +417,13 @@ After changes:
 git diff --stat
 git status --short
 ```
+
+Code documentation rules:
+
+- Every public helper, Airflow callable, producer and consumer function should have a docstring.
+- Docstrings must describe inputs, return values and side effects when relevant.
+- Use comments only for non-obvious implementation choices, not for line-by-line narration.
+- If a stage changes a function contract, update its docstring in the same commit.
 
 ### Docker Workflow
 

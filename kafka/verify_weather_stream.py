@@ -10,10 +10,20 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 def run_python(script: Path, args: list[str]) -> None:
+    """Run a project Python script from the repository root.
+
+    Args:
+        script: Python script path to execute.
+        args: CLI arguments passed to the script.
+
+    Side effects:
+        Starts a subprocess and raises if it exits unsuccessfully.
+    """
     subprocess.run([sys.executable, str(script), *args], cwd=PROJECT_ROOT, check=True)
 
 
 def main() -> None:
+    """CLI entry point for API -> Kafka -> raw JSONL verification."""
     parser = argparse.ArgumentParser(description="Verify Open-Meteo API -> Kafka -> raw JSONL.")
     parser.add_argument("--max-messages", type=int, default=1)
     args = parser.parse_args()

@@ -32,6 +32,16 @@ def build_open_meteo_current_url(
     longitude: float = DEFAULT_LONGITUDE,
     timezone_name: str = OPEN_METEO_TIMEZONE,
 ) -> str:
+    """Build the Open-Meteo current weather URL.
+
+    Args:
+        latitude: Weather latitude.
+        longitude: Weather longitude.
+        timezone_name: IANA timezone requested from Open-Meteo.
+
+    Returns:
+        Fully qualified HTTPS URL for current weather values.
+    """
     query = urlencode(
         {
             "latitude": latitude,
@@ -44,6 +54,15 @@ def build_open_meteo_current_url(
 
 
 def request_json(url: str, timeout: int = 30) -> dict[str, Any]:
+    """Request JSON from an HTTP endpoint.
+
+    Args:
+        url: HTTP or HTTPS URL to call.
+        timeout: Network timeout in seconds.
+
+    Returns:
+        Decoded JSON object as a dictionary.
+    """
     request = Request(url, headers={"Accept": "application/json"})
     with urlopen(request, timeout=timeout) as response:
         charset = response.headers.get_content_charset() or "utf-8"
@@ -51,6 +70,11 @@ def request_json(url: str, timeout: int = 30) -> dict[str, Any]:
 
 
 def build_weather_event() -> dict[str, Any]:
+    """Fetch Open-Meteo current weather and wrap it as a Kafka event.
+
+    Returns:
+        Event dictionary containing metadata, request URL and raw API response.
+    """
     request_url = build_open_meteo_current_url()
     response = request_json(request_url)
     return {
@@ -67,6 +91,15 @@ def build_weather_event() -> dict[str, Any]:
 
 
 def create_topic(topic: str, bootstrap_server: str) -> None:
+    """Create a Kafka topic if it does not already exist.
+
+    Args:
+        topic: Kafka topic name.
+        bootstrap_server: Kafka bootstrap server reachable from the Kafka container.
+
+    Side effects:
+        Executes `kafka-topics --create --if-not-exists` in the Kafka container.
+    """
     run_command(
         [
             "docker",
@@ -90,6 +123,16 @@ def create_topic(topic: str, bootstrap_server: str) -> None:
 
 
 def publish_event(topic: str, bootstrap_server: str, event: dict[str, Any]) -> None:
+    """Publish one JSON event to Kafka.
+
+    Args:
+        topic: Kafka topic name.
+        bootstrap_server: Kafka bootstrap server reachable from the Kafka container.
+        event: JSON-serializable event payload.
+
+    Side effects:
+        Writes one compact JSON line to `kafka-console-producer`.
+    """
     run_command(
         [
             "docker",
@@ -108,6 +151,7 @@ def publish_event(topic: str, bootstrap_server: str, event: dict[str, Any]) -> N
 
 
 def main() -> None:
+    """CLI entry point for one-shot Open-Meteo current weather publishing."""
     parser = argparse.ArgumentParser(description="Publish Open-Meteo current weather to Kafka.")
     parser.add_argument("--topic", default=WEATHER_STREAM_TOPIC)
     parser.add_argument("--bootstrap-server", default=KAFKA_BOOTSTRAP_SERVER)

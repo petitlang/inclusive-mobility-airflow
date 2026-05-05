@@ -15,6 +15,14 @@ from lib.config import KAFKA_BOOTSTRAP_SERVER, WEATHER_STREAM_TOPIC
 
 
 def raw_stream_file(day: str | None = None) -> Path:
+    """Build the raw Data Lake output path for consumed weather stream events.
+
+    Args:
+        day: Optional partition date in YYYYMMDD format. Defaults to today.
+
+    Returns:
+        Path to the JSONL file for the selected date partition.
+    """
     partition_day = day or date.today().strftime("%Y%m%d")
     return (
         PROJECT_ROOT
@@ -28,6 +36,16 @@ def raw_stream_file(day: str | None = None) -> Path:
 
 
 def consume_messages(topic: str, bootstrap_server: str, max_messages: int) -> list[str]:
+    """Consume a bounded number of Kafka messages from the beginning of a topic.
+
+    Args:
+        topic: Kafka topic name.
+        bootstrap_server: Kafka bootstrap server reachable from the Kafka container.
+        max_messages: Maximum number of messages to consume.
+
+    Returns:
+        Non-empty message lines read from Kafka.
+    """
     result = run_command(
         [
             "docker",
@@ -51,6 +69,15 @@ def consume_messages(topic: str, bootstrap_server: str, max_messages: int) -> li
 
 
 def write_messages(messages: list[str], output_file: Path) -> None:
+    """Append consumed Kafka messages to a raw JSONL file.
+
+    Args:
+        messages: Kafka message payloads, one JSON string per item.
+        output_file: Target JSONL file path.
+
+    Side effects:
+        Creates parent directories and appends messages to `output_file`.
+    """
     output_file.parent.mkdir(parents=True, exist_ok=True)
     with output_file.open("a", encoding="utf-8") as handle:
         for message in messages:
@@ -59,6 +86,7 @@ def write_messages(messages: list[str], output_file: Path) -> None:
 
 
 def main() -> None:
+    """CLI entry point for consuming weather events into the raw Data Lake."""
     parser = argparse.ArgumentParser(description="Persist Kafka weather events to raw JSONL.")
     parser.add_argument("--topic", default=WEATHER_STREAM_TOPIC)
     parser.add_argument("--bootstrap-server", default=KAFKA_BOOTSTRAP_SERVER)

@@ -24,6 +24,17 @@ def build_open_meteo_url(
     forecast_days: int = OPEN_METEO_FORECAST_DAYS,
     timezone_name: str = OPEN_METEO_TIMEZONE,
 ) -> str:
+    """Build the Open-Meteo daily forecast URL.
+
+    Args:
+        latitude: Forecast latitude.
+        longitude: Forecast longitude.
+        forecast_days: Number of forecast days to request.
+        timezone_name: IANA timezone used by Open-Meteo in the response.
+
+    Returns:
+        Fully qualified HTTPS URL for daily forecast data.
+    """
     query = urlencode(
         {
             "latitude": latitude,
@@ -37,6 +48,15 @@ def build_open_meteo_url(
 
 
 def request_json(url: str, timeout: int = 30) -> dict[str, Any]:
+    """Request JSON from an HTTP endpoint.
+
+    Args:
+        url: HTTP or HTTPS URL to call.
+        timeout: Network timeout in seconds.
+
+    Returns:
+        Decoded JSON object as a dictionary.
+    """
     request = Request(url, headers={"Accept": "application/json"})
     with urlopen(request, timeout=timeout) as response:
         charset = response.headers.get_content_charset() or "utf-8"
@@ -44,7 +64,17 @@ def request_json(url: str, timeout: int = 30) -> dict[str, Any]:
 
 
 def fetch_weather_data(**kwargs) -> str:
-    """Fetch raw daily weather data from Open-Meteo."""
+    """Fetch Open-Meteo daily weather and write it to the Data Lake.
+
+    Args:
+        **kwargs: Airflow context arguments, currently unused.
+
+    Returns:
+        String path to the raw JSON file written.
+
+    Side effects:
+        Creates `datalake/raw/open_meteo/daily_weather/YYYYMMDD/weather.json`.
+    """
     target_dir = ensure_datalake_dir("raw", "open_meteo", "daily_weather")
     target_file = target_dir / "weather.json"
     url = build_open_meteo_url()
