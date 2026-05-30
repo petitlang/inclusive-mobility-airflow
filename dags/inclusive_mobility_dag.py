@@ -10,6 +10,7 @@ from airflow.operators.python import PythonOperator
 sys.path.insert(0, "/opt/airflow")
 
 from index.bulk_import_to_es import index_usage_outputs
+from index.setup_kibana import setup_kibana_dashboards
 from ingestion.acces_libre_fetcher import fetch_accessibility_data
 from ingestion.open_meteo_fetcher import fetch_weather_data
 from transform.mobility_score import compute_daily_mobility_scores
@@ -70,10 +71,16 @@ with DAG(
         python_callable=index_usage_outputs,
     )
 
+    setup_kibana = PythonOperator(
+        task_id="setup_kibana_dashboards",
+        python_callable=setup_kibana_dashboards,
+    )
+
     chain(
         init_s3_buckets,
         [extract_accessibility_data, extract_weather_data],
         [format_accessibility, format_weather],
         compute_scores,
         index_to_es,
+        setup_kibana,
     )
