@@ -54,8 +54,8 @@ This table is the main project tracking source. Every stage update must keep thi
 | 3. Raw ingestion | Step 2.1 Ingestion | Fetch N data sources through REST APIs into raw Data Lake files. | Implement AccesLibre fetcher; implement Open-Meteo fetcher; store raw JSON; handle API parameters and pagination. | Raw API files under `data/raw/...`. | DAG test; file existence checks; raw JSON preview. | Done | `6a089bb` |
 | 4. Streaming API ingestion with Kafka | Realtime via Kafka bonus | Poll a frequently refreshed API and push events into Kafka. | Create Kafka topic; implement Open-Meteo current weather producer; implement consumer that persists raw stream events. | Kafka messages and raw stream JSONL files. | Produce and consume sample messages in under 1 minute. | Done | `e29e1ad` |
 | 5. Spark formatting | Step 2.2 Formatting | Normalize raw data and write parquet files. | Create Spark jobs; normalize fields; clean dates; select useful columns; write parquet; fix Spark Data Lake write permissions for local Docker. | Parquet files under `data/formatted/...`. | Spark jobs succeeded; parquet readback returned 100 accessibility rows and 3 weather rows. | Done | `3f29b8b` |
-| 6. Spark combination and mobility score | Step 2.3 Combination | Join sources and create useful output. | Join accessibility and weather data; compute accessibility score, weather risk score and mobility score; create risk/prioritization outputs. | Usage parquet outputs under `data/usage/...`. | Spark job run; sample output checks. | Planned |  |
-| 7. Elasticsearch indexing | Step 2.4 Indexing | Expose final output to a search/dashboard layer. | Add Elasticsearch service; index usage outputs; define index mappings if needed. | Indexed mobility results. | Elasticsearch query returns documents. | Planned |  |
+| 6. Spark combination and mobility score | Step 2.3 Combination | Join sources and create useful output. | Join accessibility and weather data; compute accessibility score, weather risk score and mobility score; create risk/prioritization outputs. | Usage parquet outputs under `data/usage/...`. | DAG test: 5/5 tasks success; 116 scores, 25 risky, 108 priorities. | Done | `fceb00d` |
+| 7. Elasticsearch indexing | Step 2.4 Indexing | Expose final output to a search/dashboard layer. | Add Elasticsearch service; index usage outputs; define index mappings if needed. | Indexed mobility results. | Elasticsearch query returns documents. | In progress |  |
 | 8. Kibana dashboard | Data Viz / Dashboarding | Build dashboard on top of final result. | Add Kibana service; create visualizations for mobility scores, risky areas and improvement priorities. | Kibana dashboard. | Dashboard opens and displays indexed data. | Planned |  |
 | 9. Final deliverables | Deliverable section | Prepare final hand-in package. | Write max 10-page PDF; record max 10-minute video; prepare code zip; final README cleanup. | PDF, video and code zip. | Final run from Airflow DAG; deliverable review. | Planned |  |
 
@@ -371,7 +371,7 @@ inclusive-mobility-airflow/
     verify_formatted_outputs.py
     verify_usage_outputs.py
   index/
-    .gitkeep
+    bulk_import_to_es.py
   utils/
     config.py
     docker_spark.py

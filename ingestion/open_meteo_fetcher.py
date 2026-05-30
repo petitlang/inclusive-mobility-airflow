@@ -16,6 +16,7 @@ from utils.config import (
     OPEN_METEO_TIMEZONE,
 )
 from utils.paths import ensure_data_dir
+from utils.s3_utils import upload_json, s3_key, layer_bucket
 
 
 def build_open_meteo_url(
@@ -94,4 +95,9 @@ def fetch_weather_data(**kwargs) -> str:
     }
     target_file.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     print(f"Wrote raw Open-Meteo weather data to: {target_file}")
+
+    key = s3_key("raw", "open_meteo", "daily_weather", "daily_weather.json")
+    upload_json(layer_bucket("raw"), key, payload)
+    print(f"Uploaded to S3: s3://{layer_bucket('raw')}/{key}")
+
     return str(target_file)

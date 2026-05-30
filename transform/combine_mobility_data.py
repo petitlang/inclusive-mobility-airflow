@@ -12,6 +12,20 @@ from pyspark.sql.functions import (
 )
 
 
+def _build_spark(app_name: str) -> SparkSession:
+    return (
+        SparkSession.builder.appName(app_name)
+        .config("spark.jars.packages", "org.apache.hadoop:hadoop-aws:3.3.4")
+        .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
+        .config("spark.hadoop.fs.s3a.endpoint", "http://localstack:4566")
+        .config("spark.hadoop.fs.s3a.access.key", "dummy")
+        .config("spark.hadoop.fs.s3a.secret.key", "dummy")
+        .config("spark.hadoop.fs.s3a.path.style.access", "true")
+        .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "false")
+        .getOrCreate()
+    )
+
+
 def compute_accessibility_score(df: DataFrame) -> DataFrame:
     """Add accessibility_score (0-100) based on accessibility features.
 
@@ -110,7 +124,7 @@ def combine_and_score(
         risky_output: Output path for risky_areas parquet.
         priorities_output: Output path for improvement_priorities parquet.
     """
-    spark = SparkSession.builder.appName("CombineMobilityData").getOrCreate()
+    spark = _build_spark("CombineMobilityData")
 
     accessibility_df = spark.read.parquet(accessibility_path)
     weather_df = spark.read.parquet(weather_path)

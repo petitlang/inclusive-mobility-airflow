@@ -7,6 +7,7 @@ import docker
 
 SPARK_MASTER_CONTAINER = "spark-master"
 SPARK_SUBMIT = "/opt/spark/bin/spark-submit"
+S3A_PACKAGES = "org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262"
 
 
 def _get_spark_container():
@@ -38,7 +39,7 @@ def run_spark_job(
         RuntimeError: If the spark-master container is not running.
     """
     container = _get_spark_container()
-    cmd_parts = [SPARK_SUBMIT, application]
+    cmd_parts = [SPARK_SUBMIT, "--packages", S3A_PACKAGES, application]
     if args:
         for key, value in args.items():
             cmd_parts.append(key)

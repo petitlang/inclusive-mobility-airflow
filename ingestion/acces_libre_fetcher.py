@@ -13,6 +13,7 @@ from utils.config import (
     ACCES_LIBRE_TABULAR_API_URL,
 )
 from utils.paths import ensure_data_dir
+from utils.s3_utils import upload_json, s3_key, layer_bucket
 
 
 def build_acces_libre_url(page: int = 1, page_size: int = ACCES_LIBRE_PAGE_SIZE) -> str:
@@ -108,4 +109,9 @@ def fetch_accessibility_data(**kwargs) -> str:
     }
     target_file.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     print(f"Wrote {len(records)} raw AccesLibre records to: {target_file}")
+
+    key = s3_key("raw", "acces_libre", "establishments", "establishments.json")
+    upload_json(layer_bucket("raw"), key, payload)
+    print(f"Uploaded to S3: s3://{layer_bucket('raw')}/{key}")
+
     return str(target_file)
