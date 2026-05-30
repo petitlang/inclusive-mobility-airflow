@@ -1,1 +1,1 @@
-"""Reusable helpers for the inclusive mobility Airflow pipeline."""
+"""Airflow-specific helpers. Project-level modules live in ingestion/, transform/, utils/."""

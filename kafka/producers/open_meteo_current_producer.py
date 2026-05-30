@@ -12,10 +12,9 @@ from urllib.request import Request, urlopen
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
-sys.path.insert(0, str(PROJECT_ROOT / "dags"))
 
 from kafka.common import compact_json, run_command
-from lib.config import (
+from utils.config import (
     DEFAULT_CITY,
     DEFAULT_LATITUDE,
     DEFAULT_LONGITUDE,

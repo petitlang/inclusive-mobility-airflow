@@ -1,17 +1,14 @@
 # Spark Workspace
 
-This folder is reserved for Spark jobs used by the inclusive mobility pipeline.
+This folder is reserved for Spark resources used by the inclusive mobility pipeline.
 
-Planned usage:
-
-- `jobs/`: batch or streaming Spark jobs triggered by Airflow.
 - `notebooks/`: local exploration notebooks if needed.
 
-The Docker Compose stack mounts:
+Spark jobs live in the project-level `transform/` directory:
 
 ```text
-spark/jobs -> /opt/spark/jobs
-datalake -> /opt/spark/datalake
+transform/ -> /opt/spark/transform
+data/      -> /opt/spark/data
 ```
 
 Spark UI:

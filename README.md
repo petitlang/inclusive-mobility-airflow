@@ -51,10 +51,10 @@ This table is the main project tracking source. Every stage update must keep thi
 | 0. Topic and sources | Step 1.1, Step 1.2 | Define theme and at least two data sources. | Choose inclusive mobility theme; choose AccesLibre and Open-Meteo. | Theme and API sources documented. | README review. | Done | `3b23dc4` |
 | 1. Airflow skeleton | Step 2 Data Pipeline | Create one Airflow DAG and clean project structure. | Remove classroom examples; create DAG; create `dags/lib`; create Data Lake folders; add base tests. | `inclusive_mobility_daily_pipeline` loads in Airflow. | `airflow dags list-import-errors`; `airflow dags test`. | Done | `3b23dc4` |
 | 2. Spark/Kafka infrastructure | Spark architecture, Kafka bonus | Prepare Spark route and optional realtime route. | Add Spark master/worker; add Kafka/Zookeeper; add workspace folders; verify services. | Docker stack includes Airflow, Spark, Kafka and Zookeeper. | `docker compose ps`; Spark version; Kafka topic list. | Done | `f47f521` |
-| 3. Raw ingestion | Step 2.1 Ingestion | Fetch N data sources through REST APIs into raw Data Lake files. | Implement AccesLibre fetcher; implement Open-Meteo fetcher; store raw JSON; handle API parameters and pagination. | Raw API files under `datalake/raw/...`. | DAG test; file existence checks; raw JSON preview. | Done | `6a089bb` |
+| 3. Raw ingestion | Step 2.1 Ingestion | Fetch N data sources through REST APIs into raw Data Lake files. | Implement AccesLibre fetcher; implement Open-Meteo fetcher; store raw JSON; handle API parameters and pagination. | Raw API files under `data/raw/...`. | DAG test; file existence checks; raw JSON preview. | Done | `6a089bb` |
 | 4. Streaming API ingestion with Kafka | Realtime via Kafka bonus | Poll a frequently refreshed API and push events into Kafka. | Create Kafka topic; implement Open-Meteo current weather producer; implement consumer that persists raw stream events. | Kafka messages and raw stream JSONL files. | Produce and consume sample messages in under 1 minute. | Done | `e29e1ad` |
-| 5. Spark formatting | Step 2.2 Formatting | Normalize raw data and write parquet files. | Create Spark jobs; normalize fields; clean dates; select useful columns; write parquet; fix Spark Data Lake write permissions for local Docker. | Parquet files under `datalake/formatted/...`. | Spark jobs succeeded; parquet readback returned 100 accessibility rows and 3 weather rows. | Done | `3f29b8b` |
-| 6. Spark combination and mobility score | Step 2.3 Combination | Join sources and create useful output. | Join accessibility and weather data; compute accessibility score, weather risk score and mobility score; create risk/prioritization outputs. | Usage parquet outputs under `datalake/usage/...`. | Spark job run; sample output checks. | Planned |  |
+| 5. Spark formatting | Step 2.2 Formatting | Normalize raw data and write parquet files. | Create Spark jobs; normalize fields; clean dates; select useful columns; write parquet; fix Spark Data Lake write permissions for local Docker. | Parquet files under `data/formatted/...`. | Spark jobs succeeded; parquet readback returned 100 accessibility rows and 3 weather rows. | Done | `3f29b8b` |
+| 6. Spark combination and mobility score | Step 2.3 Combination | Join sources and create useful output. | Join accessibility and weather data; compute accessibility score, weather risk score and mobility score; create risk/prioritization outputs. | Usage parquet outputs under `data/usage/...`. | Spark job run; sample output checks. | Planned |  |
 | 7. Elasticsearch indexing | Step 2.4 Indexing | Expose final output to a search/dashboard layer. | Add Elasticsearch service; index usage outputs; define index mappings if needed. | Indexed mobility results. | Elasticsearch query returns documents. | Planned |  |
 | 8. Kibana dashboard | Data Viz / Dashboarding | Build dashboard on top of final result. | Add Kibana service; create visualizations for mobility scores, risky areas and improvement priorities. | Kibana dashboard. | Dashboard opens and displays indexed data. | Planned |  |
 | 9. Final deliverables | Deliverable section | Prepare final hand-in package. | Write max 10-page PDF; record max 10-minute video; prepare code zip; final README cleanup. | PDF, video and code zip. | Final run from Airflow DAG; deliverable review. | Planned |  |
@@ -98,7 +98,7 @@ Completed:
 - Removed classroom DAG files and old helper/test files.
 - Added `inclusive_mobility_daily_pipeline`.
 - Added reusable modules under `dags/lib`.
-- Added `datalake/raw`, `datalake/formatted`, and `datalake/usage`.
+- Added `data/raw`, `data/formatted`, and `data/usage`.
 - Disabled Airflow example DAGs.
 - Mounted local Data Lake into Airflow containers.
 - Added `.env` with `AIRFLOW_UID=50000`.
@@ -122,7 +122,7 @@ Completed:
 - Added `zookeeper` using `confluentinc/cp-zookeeper:7.6.1`.
 - Added `kafka` using `confluentinc/cp-kafka:7.6.1`.
 - Added Kafka and Zookeeper named volumes.
-- Added `spark/jobs`, `spark/notebooks`, `kafka/producers`, and `kafka/consumers`.
+- Added `transform/`, `spark/notebooks`, `kafka/producers`, and `kafka/consumers`.
 - Removed unused exited one-off Airflow worker containers from previous temporary runs.
 - Kept `airflow-init` because an exited code `0` is normal for the init service.
 
@@ -165,8 +165,8 @@ Completed:
 Outputs produced during verification:
 
 ```text
-datalake/raw/acces_libre/establishments/20260505/accessibility.json
-datalake/raw/open_meteo/daily_weather/20260505/weather.json
+data/raw/acces_libre/establishments/20260505/establishments.json
+data/raw/open_meteo/daily_weather/20260505/daily_weather.json
 ```
 
 Verification result:
@@ -202,7 +202,7 @@ Completed:
 Outputs produced during verification:
 
 ```text
-datalake/raw/open_meteo/current_weather_stream/20260505/events.jsonl
+data/raw/open_meteo/current_weather_stream/20260505/current_weather_stream.jsonl
 ```
 
 Kafka topic:
@@ -226,7 +226,7 @@ Status: done.
 
 Completed:
 
-- Created Spark formatting jobs in `spark/jobs`.
+- Created Spark formatting jobs in `transform/`.
 - Normalized AccesLibre records into a clean establishments table.
 - Normalized Open-Meteo daily records into a clean daily weather table.
 - Cleaned field names and date/time values.
@@ -238,8 +238,8 @@ Completed:
 Outputs:
 
 ```text
-datalake/formatted/acces_libre/establishments/YYYYMMDD/part-*.snappy.parquet
-datalake/formatted/open_meteo/daily_weather/YYYYMMDD/part-*.snappy.parquet
+data/formatted/acces_libre/establishments/YYYYMMDD/part-*.snappy.parquet
+data/formatted/open_meteo/daily_weather/YYYYMMDD/part-*.snappy.parquet
 ```
 
 Verification result:
@@ -269,9 +269,9 @@ Tasks:
 Expected outputs:
 
 ```text
-datalake/usage/inclusive_mobility/mobility_scores/YYYYMMDD/scores.snappy.parquet
-datalake/usage/inclusive_mobility/risky_areas/YYYYMMDD/risky_areas.snappy.parquet
-datalake/usage/inclusive_mobility/improvement_priorities/YYYYMMDD/priorities.snappy.parquet
+data/usage/inclusive_mobility/mobility_scores/YYYYMMDD/scores.snappy.parquet
+data/usage/inclusive_mobility/risky_areas/YYYYMMDD/risky_areas.snappy.parquet
+data/usage/inclusive_mobility/improvement_priorities/YYYYMMDD/priorities.snappy.parquet
 ```
 
 Initial formula:
@@ -328,7 +328,7 @@ Tasks:
 All project outputs must follow this path convention:
 
 ```text
-datalake/{layer}/{group}/{dataEntity}/{YYYYMMDD}/{filename}
+data/{layer}/{group}/{dataEntity}/{YYYYMMDD}/{filename}
 ```
 
 Rules:
@@ -343,43 +343,59 @@ Rules:
 Examples:
 
 ```text
-datalake/raw/acces_libre/establishments/20260505/accessibility.json
-datalake/raw/open_meteo/daily_weather/20260505/weather.json
-datalake/formatted/acces_libre/establishments/20260505/establishments.snappy.parquet
-datalake/formatted/open_meteo/daily_weather/20260505/weather.snappy.parquet
-datalake/usage/inclusive_mobility/mobility_scores/20260505/scores.snappy.parquet
+data/raw/acces_libre/establishments/20260505/establishments.json
+data/raw/open_meteo/daily_weather/20260505/daily_weather.json
+data/formatted/acces_libre/establishments/20260505/establishments.snappy.parquet
+data/formatted/open_meteo/daily_weather/20260505/weather.snappy.parquet
+data/usage/inclusive_mobility/mobility_scores/20260505/scores.snappy.parquet
 ```
 
 ## Repository Structure
 
 ```text
-airflow/
+inclusive-mobility-airflow/
   dags/
     inclusive_mobility_dag.py
     lib/
-      acces_libre_fetcher.py
-      config.py
-      mobility_score.py
-      open_meteo_fetcher.py
-      paths.py
-      raw_to_formatted_accessibility.py
-      raw_to_formatted_weather.py
-  datalake/
+      __init__.py
+  ingestion/
+    acces_libre_fetcher.py
+    open_meteo_fetcher.py
+  transform/
+    combine_mobility_data.py
+    format_accessibility.py
+    format_weather.py
+    mobility_score.py
+    raw_to_formatted_accessibility.py
+    raw_to_formatted_weather.py
+    verify_formatted_outputs.py
+    verify_usage_outputs.py
+  index/
+    .gitkeep
+  utils/
+    config.py
+    docker_spark.py
+    paths.py
+    verify_weather_stream.py
+  data/
     raw/
     formatted/
     usage/
   spark/
-    README.md
-    jobs/
     notebooks/
   kafka/
-    README.md
+    common.py
     producers/
     consumers/
   test/
     test_mobility_score.py
     test_paths.py
+    test_raw_ingestion.py
+    test_spark_formatting_paths.py
+    test_streaming_ingestion.py
   docker-compose.yaml
+  .env
+  .gitignore
   README.md
 ```
 
@@ -488,9 +504,9 @@ Spark:
 
 ```bash
 docker compose exec spark-master /opt/spark/bin/spark-submit --version
-docker compose exec spark-master /opt/spark/bin/spark-submit /opt/spark/jobs/format_accessibility.py --raw-path /opt/spark/datalake/raw/acces_libre/establishments/20260505/accessibility.json --output-path /opt/spark/datalake/formatted/acces_libre/establishments/20260505
-docker compose exec spark-master /opt/spark/bin/spark-submit /opt/spark/jobs/format_weather.py --raw-path /opt/spark/datalake/raw/open_meteo/daily_weather/20260505/weather.json --output-path /opt/spark/datalake/formatted/open_meteo/daily_weather/20260505
-docker compose exec spark-master /opt/spark/bin/spark-submit /opt/spark/jobs/verify_formatted_outputs.py --accessibility-path /opt/spark/datalake/formatted/acces_libre/establishments/20260505 --weather-path /opt/spark/datalake/formatted/open_meteo/daily_weather/20260505
+docker compose exec spark-master /opt/spark/bin/spark-submit /opt/spark/transform/format_accessibility.py --raw-path /opt/spark/data/raw/acces_libre/establishments/20260505/establishments.json --output-path /opt/spark/data/formatted/acces_libre/establishments/20260505
+docker compose exec spark-master /opt/spark/bin/spark-submit /opt/spark/transform/format_weather.py --raw-path /opt/spark/data/raw/open_meteo/daily_weather/20260505/daily_weather.json --output-path /opt/spark/data/formatted/open_meteo/daily_weather/20260505
+docker compose exec spark-master /opt/spark/bin/spark-submit /opt/spark/transform/verify_formatted_outputs.py --accessibility-path /opt/spark/data/formatted/acces_libre/establishments/20260505 --weather-path /opt/spark/data/formatted/open_meteo/daily_weather/20260505
 ```
 
 Kafka:

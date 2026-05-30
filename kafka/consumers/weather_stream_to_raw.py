@@ -8,10 +8,9 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
-sys.path.insert(0, str(PROJECT_ROOT / "dags"))
 
 from kafka.common import run_command
-from lib.config import KAFKA_BOOTSTRAP_SERVER, WEATHER_STREAM_TOPIC
+from utils.config import KAFKA_BOOTSTRAP_SERVER, WEATHER_STREAM_TOPIC
 
 
 def raw_stream_file(day: str | None = None) -> Path:
@@ -26,12 +25,12 @@ def raw_stream_file(day: str | None = None) -> Path:
     partition_day = day or date.today().strftime("%Y%m%d")
     return (
         PROJECT_ROOT
-        / "datalake"
+        / "data"
         / "raw"
         / "open_meteo"
         / "current_weather_stream"
         / partition_day
-        / "events.jsonl"
+        / "current_weather_stream.jsonl"
     )
 
 

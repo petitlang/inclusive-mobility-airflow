@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 
 
-DATALAKE_ROOT = Path(os.getenv("DATALAKE_ROOT", "/opt/airflow/datalake"))
+DATA_ROOT = Path(os.getenv("DATA_ROOT", "/opt/airflow/data"))
 
 ACCES_LIBRE_API_URL = "https://acceslibre.beta.gouv.fr/api/erps/"
 ACCES_LIBRE_TABULAR_API_URL = (

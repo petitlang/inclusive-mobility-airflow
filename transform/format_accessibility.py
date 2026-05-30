@@ -10,7 +10,7 @@ def format_accessibility(raw_path: str, output_path: str) -> None:
     """Normalize raw AccesLibre JSON into a parquet establishments table.
 
     Args:
-        raw_path: Path to `accessibility.json` generated in the raw layer.
+        raw_path: Path to `establishments.json` generated in the raw layer.
         output_path: Directory where Spark writes the formatted parquet dataset.
 
     Returns:

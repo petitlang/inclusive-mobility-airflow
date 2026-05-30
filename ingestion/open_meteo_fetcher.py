@@ -6,7 +6,7 @@ from typing import Any
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from lib.config import (
+from utils.config import (
     DEFAULT_CITY,
     DEFAULT_LATITUDE,
     DEFAULT_LONGITUDE,
@@ -15,7 +15,7 @@ from lib.config import (
     OPEN_METEO_API_URL,
     OPEN_METEO_TIMEZONE,
 )
-from lib.paths import ensure_datalake_dir
+from utils.paths import ensure_data_dir
 
 
 def build_open_meteo_url(
@@ -73,10 +73,10 @@ def fetch_weather_data(**kwargs) -> str:
         String path to the raw JSON file written.
 
     Side effects:
-        Creates `datalake/raw/open_meteo/daily_weather/YYYYMMDD/weather.json`.
+        Creates `data/raw/open_meteo/daily_weather/YYYYMMDD/daily_weather.json`.
     """
-    target_dir = ensure_datalake_dir("raw", "open_meteo", "daily_weather")
-    target_file = target_dir / "weather.json"
+    target_dir = ensure_data_dir("raw", "open_meteo", "daily_weather")
+    target_file = target_dir / "daily_weather.json"
     url = build_open_meteo_url()
     response = request_json(url)
     payload = {

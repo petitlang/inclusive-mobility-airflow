@@ -1,16 +1,19 @@
 from __future__ import annotations
 
+import sys
 from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.models.baseoperator import chain
 from airflow.operators.python import PythonOperator
 
-from lib.acces_libre_fetcher import fetch_accessibility_data
-from lib.mobility_score import compute_daily_mobility_scores
-from lib.open_meteo_fetcher import fetch_weather_data
-from lib.raw_to_formatted_accessibility import format_accessibility_data
-from lib.raw_to_formatted_weather import format_weather_data
+sys.path.insert(0, "/opt/airflow")
+
+from ingestion.acces_libre_fetcher import fetch_accessibility_data
+from ingestion.open_meteo_fetcher import fetch_weather_data
+from transform.mobility_score import compute_daily_mobility_scores
+from transform.raw_to_formatted_accessibility import format_accessibility_data
+from transform.raw_to_formatted_weather import format_weather_data
 
 
 DEFAULT_ARGS = {

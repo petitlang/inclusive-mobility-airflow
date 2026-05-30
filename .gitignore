@@ -13,12 +13,12 @@ logs/
 *.log
 
 # Keep the datalake folder structure, but do not commit generated data.
-datalake/raw/*
-!datalake/raw/.gitkeep
-datalake/formatted/*
-!datalake/formatted/.gitkeep
-datalake/usage/*
-!datalake/usage/.gitkeep
+data/raw/*
+!data/raw/.gitkeep
+data/formatted/*
+!data/formatted/.gitkeep
+data/usage/*
+!data/usage/.gitkeep
 
 # Local OS files
 Thumbs.db

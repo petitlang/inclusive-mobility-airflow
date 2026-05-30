@@ -10,7 +10,7 @@ def format_daily_weather(raw_path: str, output_path: str) -> None:
     """Normalize raw Open-Meteo daily JSON into a parquet weather table.
 
     Args:
-        raw_path: Path to `weather.json` generated in the raw layer.
+        raw_path: Path to `daily_weather.json` generated in the raw layer.
         output_path: Directory where Spark writes the formatted parquet dataset.
 
     Returns:

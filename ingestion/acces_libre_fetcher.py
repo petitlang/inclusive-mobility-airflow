@@ -6,13 +6,13 @@ from typing import Any
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from lib.config import (
+from utils.config import (
     ACCES_LIBRE_API_URL,
     ACCES_LIBRE_MAX_PAGES,
     ACCES_LIBRE_PAGE_SIZE,
     ACCES_LIBRE_TABULAR_API_URL,
 )
-from lib.paths import ensure_datalake_dir
+from utils.paths import ensure_data_dir
 
 
 def build_acces_libre_url(page: int = 1, page_size: int = ACCES_LIBRE_PAGE_SIZE) -> str:
@@ -81,10 +81,10 @@ def fetch_accessibility_data(**kwargs) -> str:
         String path to the raw JSON file written.
 
     Side effects:
-        Creates `datalake/raw/acces_libre/establishments/YYYYMMDD/accessibility.json`.
+        Creates `data/raw/acces_libre/establishments/YYYYMMDD/establishments.json`.
     """
-    target_dir = ensure_datalake_dir("raw", "acces_libre", "establishments")
-    target_file = target_dir / "accessibility.json"
+    target_dir = ensure_data_dir("raw", "acces_libre", "establishments")
+    target_file = target_dir / "establishments.json"
     pages = fetch_acces_libre_pages()
     records = [
         record

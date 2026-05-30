@@ -22,9 +22,9 @@ def test_build_open_meteo_current_url_requests_current_weather_fields():
     assert "wind_speed_10m" in query["current"][0]
 
 
-def test_raw_stream_file_follows_datalake_convention():
+def test_raw_stream_file_follows_data_convention():
     path = raw_stream_file("20260505")
 
     assert str(path).replace("\\", "/").endswith(
-        "/datalake/raw/open_meteo/current_weather_stream/20260505/events.jsonl"
+        "/data/raw/open_meteo/current_weather_stream/20260505/current_weather_stream.jsonl"
     )

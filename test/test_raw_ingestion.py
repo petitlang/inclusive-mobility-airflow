@@ -4,10 +4,10 @@ from urllib.parse import parse_qs, urlparse
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(PROJECT_ROOT / "dags"))
+sys.path.insert(0, str(PROJECT_ROOT))
 
-from lib.acces_libre_fetcher import build_acces_libre_url
-from lib.open_meteo_fetcher import build_open_meteo_url
+from ingestion.acces_libre_fetcher import build_acces_libre_url
+from ingestion.open_meteo_fetcher import build_open_meteo_url
 
 
 def test_build_acces_libre_url_uses_small_paginated_resource_request():
