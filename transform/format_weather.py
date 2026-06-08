@@ -30,25 +30,30 @@ def format_daily_weather(raw_path: str, output_path: str) -> None:
     spark = _build_spark("FormatOpenMeteoDailyWeather")
 
     raw_df = spark.read.option("multiLine", "true").json(raw_path)
-    zipped = arrays_zip(
-        col("response.daily.time"),
-        col("response.daily.temperature_2m_max"),
-        col("response.daily.temperature_2m_min"),
-        col("response.daily.temperature_2m_mean"),
-        col("response.daily.apparent_temperature_max"),
-        col("response.daily.precipitation_sum"),
-        col("response.daily.precipitation_hours"),
-        col("response.daily.wind_speed_10m_max"),
-        col("response.daily.wind_gusts_10m_max"),
-        col("response.daily.weather_code"),
-    )
-
-    formatted = raw_df.select(
-        col("city"),
-        col("latitude").cast("double").alias("latitude"),
-        col("longitude").cast("double").alias("longitude"),
+    locations_df = raw_df.select(
         col("timezone"),
         to_timestamp(col("fetched_at")).alias("source_fetched_at_utc"),
+        explode(col("locations")).alias("location"),
+    )
+    zipped = arrays_zip(
+        col("location.response.daily.time"),
+        col("location.response.daily.temperature_2m_max"),
+        col("location.response.daily.temperature_2m_min"),
+        col("location.response.daily.temperature_2m_mean"),
+        col("location.response.daily.apparent_temperature_max"),
+        col("location.response.daily.precipitation_sum"),
+        col("location.response.daily.precipitation_hours"),
+        col("location.response.daily.wind_speed_10m_max"),
+        col("location.response.daily.wind_gusts_10m_max"),
+        col("location.response.daily.weather_code"),
+    )
+
+    formatted = locations_df.select(
+        col("location.city").alias("city"),
+        col("location.latitude").cast("double").alias("latitude"),
+        col("location.longitude").cast("double").alias("longitude"),
+        col("timezone"),
+        col("source_fetched_at_utc"),
         explode(zipped).alias("daily"),
     ).select(
         to_date(col("daily.time")).alias("weather_date"),

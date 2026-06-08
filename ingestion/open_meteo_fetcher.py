@@ -12,10 +12,11 @@ from utils.config import (
     DEFAULT_LONGITUDE,
     OPEN_METEO_DAILY_VARIABLES,
     OPEN_METEO_FORECAST_DAYS,
+    OPEN_METEO_MAX_LOCATIONS,
     OPEN_METEO_API_URL,
     OPEN_METEO_TIMEZONE,
 )
-from utils.paths import ensure_data_dir
+from utils.paths import data_dir, ensure_data_dir
 from utils.s3_utils import upload_json, s3_key, layer_bucket
 
 
@@ -64,8 +65,69 @@ def request_json(url: str, timeout: int = 30) -> dict[str, Any]:
         return json.loads(response.read().decode(charset))
 
 
+def _valid_coordinate(latitude: Any, longitude: Any) -> bool:
+    try:
+        lat = float(latitude)
+        lon = float(longitude)
+    except (TypeError, ValueError):
+        return False
+    return -90 <= lat <= 90 and -180 <= lon <= 180
+
+
+def _load_accessibility_records() -> list[dict[str, Any]]:
+    raw_file = data_dir("raw", "acces_libre", "establishments") / "establishments.json"
+    if not raw_file.exists():
+        print(f"Accessibility raw file not found, using default city only: {raw_file}")
+        return []
+
+    payload = json.loads(raw_file.read_text(encoding="utf-8"))
+    return [
+        record
+        for page in payload.get("pages", [])
+        for record in page.get("response", {}).get("data", [])
+    ]
+
+
+def build_weather_locations(
+    records: list[dict[str, Any]],
+    max_locations: int = OPEN_METEO_MAX_LOCATIONS,
+) -> list[dict[str, Any]]:
+    """Build unique weather lookup locations from AccesLibre records.
+
+    Locations are deduplicated by city name and use the first valid
+    latitude/longitude observed for that city.
+    """
+    locations: dict[str, dict[str, Any]] = {}
+    for record in records:
+        city = (record.get("commune") or "").strip()
+        latitude = record.get("latitude")
+        longitude = record.get("longitude")
+        if not city or not _valid_coordinate(latitude, longitude):
+            continue
+
+        city_key = city.casefold()
+        if city_key not in locations:
+            locations[city_key] = {
+                "city": city,
+                "latitude": float(latitude),
+                "longitude": float(longitude),
+            }
+
+        if len(locations) >= max_locations:
+            break
+
+    if DEFAULT_CITY.casefold() not in locations:
+        locations[DEFAULT_CITY.casefold()] = {
+            "city": DEFAULT_CITY,
+            "latitude": DEFAULT_LATITUDE,
+            "longitude": DEFAULT_LONGITUDE,
+        }
+
+    return list(locations.values())
+
+
 def fetch_weather_data(**kwargs) -> str:
-    """Fetch Open-Meteo daily weather and write it to the Data Lake.
+    """Fetch Open-Meteo daily weather for AccesLibre cities into the Data Lake.
 
     Args:
         **kwargs: Airflow context arguments, currently unused.
@@ -78,23 +140,43 @@ def fetch_weather_data(**kwargs) -> str:
     """
     target_dir = ensure_data_dir("raw", "open_meteo", "daily_weather")
     target_file = target_dir / "daily_weather.json"
-    url = build_open_meteo_url()
-    response = request_json(url)
+
+    records = _load_accessibility_records()
+    weather_locations = build_weather_locations(records)
+    fetched_at = datetime.now(timezone.utc).isoformat()
+    location_payloads = []
+    for location in weather_locations:
+        url = build_open_meteo_url(
+            latitude=location["latitude"],
+            longitude=location["longitude"],
+        )
+        response = request_json(url)
+        location_payloads.append(
+            {
+                "city": location["city"],
+                "latitude": location["latitude"],
+                "longitude": location["longitude"],
+                "request_url": url,
+                "response": response,
+            }
+        )
+
     payload = {
         "source": "open_meteo",
         "api_url": OPEN_METEO_API_URL,
-        "request_url": url,
-        "city": DEFAULT_CITY,
-        "latitude": DEFAULT_LATITUDE,
-        "longitude": DEFAULT_LONGITUDE,
         "timezone": OPEN_METEO_TIMEZONE,
         "forecast_days": OPEN_METEO_FORECAST_DAYS,
+        "max_locations": OPEN_METEO_MAX_LOCATIONS,
         "daily_variables": list(OPEN_METEO_DAILY_VARIABLES),
-        "fetched_at": datetime.now(timezone.utc).isoformat(),
-        "response": response,
+        "fetched_at": fetched_at,
+        "location_count": len(location_payloads),
+        "locations": location_payloads,
     }
     target_file.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    print(f"Wrote raw Open-Meteo weather data to: {target_file}")
+    print(
+        f"Wrote raw Open-Meteo weather for {len(location_payloads)} locations to: "
+        f"{target_file}"
+    )
 
     key = s3_key("raw", "open_meteo", "daily_weather", "daily_weather.json")
     upload_json(layer_bucket("raw"), key, payload)

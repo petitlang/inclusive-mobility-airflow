@@ -7,7 +7,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from ingestion.acces_libre_fetcher import build_acces_libre_url
-from ingestion.open_meteo_fetcher import build_open_meteo_url
+from ingestion.open_meteo_fetcher import build_open_meteo_url, build_weather_locations
 
 
 def test_build_acces_libre_url_uses_small_paginated_resource_request():
@@ -32,3 +32,18 @@ def test_build_open_meteo_url_requests_daily_weather_variables():
     assert query["timezone"] == ["Europe/Paris"]
     assert "precipitation_sum" in query["daily"][0]
     assert "wind_speed_10m_max" in query["daily"][0]
+
+
+def test_build_weather_locations_deduplicates_cities_and_keeps_default_city():
+    records = [
+        {"commune": "Lyon", "latitude": 45.75, "longitude": 4.85},
+        {"commune": "Lyon", "latitude": 45.76, "longitude": 4.86},
+        {"commune": "Nantes", "latitude": 47.21, "longitude": -1.55},
+    ]
+
+    locations = build_weather_locations(records, max_locations=10)
+    cities = [location["city"] for location in locations]
+
+    assert cities.count("Lyon") == 1
+    assert "Nantes" in cities
+    assert "Paris" in cities

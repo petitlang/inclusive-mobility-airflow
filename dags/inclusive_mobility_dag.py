@@ -76,11 +76,8 @@ with DAG(
         python_callable=setup_kibana_dashboards,
     )
 
-    chain(
-        init_s3_buckets,
-        [extract_accessibility_data, extract_weather_data],
-        [format_accessibility, format_weather],
-        compute_scores,
-        index_to_es,
-        setup_kibana,
-    )
+    init_s3_buckets >> extract_accessibility_data
+    extract_accessibility_data >> [extract_weather_data, format_accessibility]
+    extract_weather_data >> format_weather
+    [format_accessibility, format_weather] >> compute_scores
+    compute_scores >> index_to_es >> setup_kibana

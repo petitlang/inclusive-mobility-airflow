@@ -25,6 +25,7 @@ def compute_daily_mobility_scores(**kwargs) -> str:
     scores_output = f"s3a://{USAGE_BUCKET}/inclusive_mobility/mobility_scores/{day}"
     risky_output = f"s3a://{USAGE_BUCKET}/inclusive_mobility/risky_areas/{day}"
     priorities_output = f"s3a://{USAGE_BUCKET}/inclusive_mobility/improvement_priorities/{day}"
+    city_summary_output = f"s3a://{USAGE_BUCKET}/inclusive_mobility/city_daily_summary/{day}"
 
     print("Submitting Spark combination + scoring job (S3)...")
 
@@ -36,6 +37,7 @@ def compute_daily_mobility_scores(**kwargs) -> str:
             "--scores-output": scores_output,
             "--risky-output": risky_output,
             "--priorities-output": priorities_output,
+            "--city-summary-output": city_summary_output,
         },
     )
 

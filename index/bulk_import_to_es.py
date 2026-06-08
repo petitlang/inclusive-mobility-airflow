@@ -25,6 +25,25 @@ INDEX_CONFIGS = {
         "entity": "improvement_priorities",
         "doc_id_field": "establishment_id",
     },
+    "inclusive_mobility_city_daily_summary": {
+        "entity": "city_daily_summary",
+        "doc_id_field": "city",
+    },
+}
+
+INDEX_MAPPINGS = {
+    "mappings": {
+        "properties": {
+            "location": {"type": "geo_point"},
+            "weather_date": {"type": "date"},
+            "mobility_score": {"type": "double"},
+            "accessibility_score": {"type": "double"},
+            "weather_risk_score": {"type": "double"},
+            "avg_mobility_score": {"type": "double"},
+            "avg_accessibility_score": {"type": "double"},
+            "avg_weather_risk_score": {"type": "double"},
+        }
+    }
 }
 
 
@@ -62,9 +81,16 @@ def _read_parquet_from_s3(bucket: str, prefix: str) -> pd.DataFrame:
 def _build_actions(df: pd.DataFrame, index_name: str, doc_id_field: str) -> list[dict[str, Any]]:
     """Build ES bulk indexing actions from a DataFrame."""
     actions = []
-    for _, row in df.iterrows():
+    for row_index, row in df.iterrows():
         doc = row.where(row.notna(), None).to_dict()
-        doc_id = str(doc.get(doc_id_field, ""))
+        latitude = doc.get("latitude")
+        longitude = doc.get("longitude")
+        if latitude is not None and longitude is not None:
+            doc["location"] = {"lat": float(latitude), "lon": float(longitude)}
+
+        entity_id = doc.get(doc_id_field) or row_index
+        weather_date = doc.get("weather_date")
+        doc_id = f"{entity_id}_{weather_date}" if weather_date else str(entity_id)
         actions.append({"_index": index_name, "_id": doc_id, "_source": doc})
     return actions
 
@@ -88,6 +114,10 @@ def index_usage_outputs(**kwargs) -> str:
 
         df = _read_parquet_from_s3(USAGE_BUCKET, prefix)
         actions = _build_actions(df, index_name, cfg["doc_id_field"])
+
+        if es.indices.exists(index=index_name):
+            es.indices.delete(index=index_name)
+        es.indices.create(index=index_name, body=INDEX_MAPPINGS)
 
         success, errors = helpers.bulk(es, actions, raise_on_error=False, stats_only=True)
         print(f"  Indexed {success} documents into {index_name}")

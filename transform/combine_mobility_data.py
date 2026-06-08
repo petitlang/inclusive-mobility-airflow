@@ -4,10 +4,13 @@ import argparse
 
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql.functions import (
+    avg,
     broadcast,
     col,
+    count,
     lit,
     round as spark_round,
+    sum as spark_sum,
     when,
 )
 
@@ -114,8 +117,9 @@ def combine_and_score(
     scores_output: str,
     risky_output: str,
     priorities_output: str,
+    city_summary_output: str,
 ) -> None:
-    """Join accessibility and weather data, compute scores, write 3 usage datasets.
+    """Join accessibility and weather data, compute scores, write usage datasets.
 
     Args:
         accessibility_path: Formatted accessibility parquet directory.
@@ -123,6 +127,7 @@ def combine_and_score(
         scores_output: Output path for mobility_scores parquet.
         risky_output: Output path for risky_areas parquet.
         priorities_output: Output path for improvement_priorities parquet.
+        city_summary_output: Output path for city_daily_summary parquet.
     """
     spark = _build_spark("CombineMobilityData")
 
@@ -194,6 +199,49 @@ def combine_and_score(
     )
     priorities.write.mode("overwrite").parquet(priorities_output)
 
+    with_flags = result.withColumn(
+        "is_risky",
+        when(col("mobility_score") < 40, lit(1)).otherwise(lit(0)),
+    ).withColumn(
+        "is_safe",
+        when(col("mobility_score") >= 70, lit(1)).otherwise(lit(0)),
+    ).withColumn(
+        "is_priority",
+        when(col("accessibility_score") < 50, lit(1)).otherwise(lit(0)),
+    )
+
+    city_summary = (
+        with_flags.filter(col("weather_date").isNotNull())
+        .groupBy("city", "weather_date")
+        .agg(
+            spark_round(avg("mobility_score"), 1).alias("avg_mobility_score"),
+            spark_round(avg("accessibility_score"), 1).alias("avg_accessibility_score"),
+            spark_round(avg("weather_risk_score"), 1).alias("avg_weather_risk_score"),
+            count("*").alias("total_places_count"),
+            spark_sum("is_risky").alias("risky_places_count"),
+            spark_sum("is_safe").alias("safe_places_count"),
+            spark_sum("is_priority").alias("priority_places_count"),
+        )
+        .withColumn(
+            "recommendation",
+            when(col("avg_mobility_score") >= 70, lit("Good to go"))
+            .when(col("avg_mobility_score") >= 40, lit("Go with caution"))
+            .otherwise(lit("Avoid if possible")),
+        )
+        .withColumn(
+            "main_risk_reason",
+            when(
+                (col("avg_accessibility_score") < 50)
+                & (col("avg_weather_risk_score") >= 30),
+                lit("Accessibility and weather"),
+            )
+            .when(col("avg_accessibility_score") < 50, lit("Accessibility"))
+            .when(col("avg_weather_risk_score") >= 30, lit("Weather"))
+            .otherwise(lit("Low risk")),
+        )
+    )
+    city_summary.write.mode("overwrite").parquet(city_summary_output)
+
     spark.stop()
 
 
@@ -204,6 +252,7 @@ def main() -> None:
     parser.add_argument("--scores-output", required=True)
     parser.add_argument("--risky-output", required=True)
     parser.add_argument("--priorities-output", required=True)
+    parser.add_argument("--city-summary-output", required=True)
     args = parser.parse_args()
 
     combine_and_score(
@@ -212,6 +261,7 @@ def main() -> None:
         args.scores_output,
         args.risky_output,
         args.priorities_output,
+        args.city_summary_output,
     )
 
 
